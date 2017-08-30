@@ -58,7 +58,7 @@ class RpcResult implements Result
             case DubboCodec::RESPONSE_WITH_EXCEPTION:
                 $ex = $in->readObject();
                 if (!($ex instanceof \Throwable) && !($ex instanceof \Exception)) {
-                    $ex = new RpcException(print_r($ex, true))
+                    $ex = new RpcException(print_r($ex, true));
                 }
                 $self->setException($ex);
                 break;
