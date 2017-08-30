@@ -1,5 +1,5 @@
 {
-  "name": "zanphp/dubbo",
+  "name": "zanphp/dubbo-client",
   "type": "library",
   "description": "hessian lite",
   "require": {
