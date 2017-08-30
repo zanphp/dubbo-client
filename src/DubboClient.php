@@ -309,8 +309,6 @@ class DubboClient implements Async, Heartbeatable
             $context->setDebuggerTraceTid($debuggerTid);
             $attachment[Tracer::KEY] = $debuggerTrace->getKey();
         }
-
-        yield $attachment;
     }
 
 
