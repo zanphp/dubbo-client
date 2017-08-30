@@ -4,6 +4,7 @@ namespace ZanPHP\Dubbo;
 
 
 use ZanPHP\Dubbo\Exception\DubboCodecException;
+use ZanPHP\Dubbo\Exception\RpcException;
 
 class RpcResult implements Result
 {
@@ -47,7 +48,7 @@ class RpcResult implements Result
     public static function decode(Input $in)
     {
         $self = new static();
-        $flag = $in->readByte();
+        $flag = $in->read(); // !!!!!
         switch ($flag) {
             case DubboCodec::RESPONSE_NULL_VALUE:
                 break;
@@ -55,7 +56,11 @@ class RpcResult implements Result
                 $self->setValue($in->readObject());
                 break;
             case DubboCodec::RESPONSE_WITH_EXCEPTION:
-                $self->setException($in->readObject());
+                $ex = $in->readObject();
+                if (!($ex instanceof \Throwable) && !($ex instanceof \Exception)) {
+                    $ex = new RpcException(print_r($ex, true))
+                }
+                $self->setException($ex);
                 break;
             default:
                 throw new DubboCodecException("Unknown result flag, expect '0' '1' '2', get $flag");
