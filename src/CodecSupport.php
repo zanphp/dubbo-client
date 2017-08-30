@@ -3,6 +3,7 @@
 namespace ZanPHP\Dubbo;
 
 
+use ZanPHP\Dubbo\Exception\DubboCodecException;
 use ZanPHP\HessianLite\Factory;
 
 class CodecSupport
@@ -25,8 +26,8 @@ class CodecSupport
         self::$ID_SERIALIZATION_MAP[$serialization->getContentTypeId()] = $serialization;
     }
 
-    // FIXME 包装类型如何序列化 ???
-    // map list ... 如何序列化
+    // FIXME 这里实现有问题
+    // map list ... 如何序列化，包装类型如何序列化
     public static function getJavaTypeDefaultSerialization(JavaType $type)
     {
         $serialization = null;

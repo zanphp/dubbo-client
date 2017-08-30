@@ -5,7 +5,14 @@ namespace ZanPHP\Dubbo;
 
 class RpcInvocation implements Invocation
 {
+    private $dubboVersion = DubboCodec::DUBBO_VERSION;
+
+    private $serviceName;
+
     private $methodName;
+
+    private $methodVersion = "0.0.0";
+
     /**
      * @var JavaType[]
      */
@@ -22,6 +29,26 @@ class RpcInvocation implements Invocation
      */
     private $invoker;
 
+    public function getDubboVersion()
+    {
+        return $this->dubboVersion;
+    }
+
+    public function setDubboVersion($dubboVersion)
+    {
+        $this->dubboVersion = $dubboVersion;
+    }
+
+    public function getServiceName()
+    {
+        return $this->serviceName;
+    }
+
+    public function setServiceName($serviceName)
+    {
+        $this->serviceName = $serviceName;
+    }
+
     public function getMethodName()
     {
         return $this->methodName;
@@ -30,6 +57,16 @@ class RpcInvocation implements Invocation
     public function setMethodName($methodName)
     {
         $this->methodName = $methodName;
+    }
+
+    public function getMethodVersion()
+    {
+        return $this->methodVersion;
+    }
+
+    public function setMethodVersion($methodVersion)
+    {
+        $this->methodVersion = $methodVersion;
     }
 
     public function getParameterTypes()
@@ -65,9 +102,14 @@ class RpcInvocation implements Invocation
         $this->attachments = $attachments;
     }
 
-    public function setAttachment($key, $value)
+    public function addAttachment($key, $value)
     {
         $this->attachments[$key] = $value;
+    }
+
+    public function addAttachments(array $attachments)
+    {
+        $this->attachments = array_merge($this->attachments, $attachments);
     }
 
     public function removeAttachment($key)
@@ -87,10 +129,9 @@ class RpcInvocation implements Invocation
     {
         $self = new static();
 
-        $self->attachments[Constants::DUBBO_VERSION_KEY] =  $in->readString();
-        $self->attachments[Constants::PATH_KEY] =  $in->readString();
-        $self->attachments[Constants::VERSION_KEY] =  $in->readString();
-
+        $self->dubboVersion = $in->readString();
+        $self->serviceName = $in->readString();
+        $self->methodVersion = $in->readString();
         $self->methodName = $in->readString();
 
         $desc = $in->readString();

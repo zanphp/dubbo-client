@@ -3,7 +3,17 @@
 namespace ZanPHP\Dubbo;
 
 
-class Response
+use ZanPHP\Contracts\Codec\PDU;
+use ZanPHP\Dubbo\Exception\BadRequestException;
+use ZanPHP\Dubbo\Exception\BadResponseException;
+use ZanPHP\Dubbo\Exception\ClientErrorException;
+use ZanPHP\Dubbo\Exception\ClientTimeoutException;
+use ZanPHP\Dubbo\Exception\ServerErrorException;
+use ZanPHP\Dubbo\Exception\ServerTimeoutException;
+use ZanPHP\Dubbo\Exception\ServiceErrorException;
+use ZanPHP\Dubbo\Exception\ServiceNotFoundException;
+
+class Response implements PDU
 {
     const HEARTBEAT_EVENT = null;
     const READONLY_EVENT = "R";
@@ -107,6 +117,36 @@ class Response
     public function setResult($result)
     {
         $this->result = $result;
+    }
+
+    public function isOK()
+    {
+        return $this->status === static::OK;
+    }
+
+    public function getException()
+    {
+        $msg = $this->getErrorMessage();
+        switch ($this->status) {
+            case self::CLIENT_TIMEOUT:
+                return new ClientTimeoutException($msg);
+            case self::SERVER_TIMEOUT:
+                return new ServerTimeoutException($msg);
+            case self::BAD_REQUEST:
+                return new BadRequestException($msg);
+            case self::BAD_RESPONSE:
+                return new BadResponseException($msg);
+            case self::SERVICE_NOT_FOUND:
+                return new ServiceNotFoundException($msg);
+            case self::SERVICE_ERROR:
+                return new ServiceErrorException($msg);
+            case self::SERVER_ERROR:
+                return new ServerErrorException($msg);
+            case self::CLIENT_ERROR :
+                return new ClientErrorException($msg);
+            default:
+                return null;
+        }
     }
 
     public function __toString()

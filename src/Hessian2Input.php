@@ -26,7 +26,7 @@ class Hessian2Input implements Input
 
     public function readByte()
     {
-//        return unpack('C', $this->parser->read(1))[1];
+        // return unpack('C', $this->parser->read(1))[1];
         return $this->parser->readNum(1);
     }
 

@@ -3,6 +3,8 @@
 namespace ZanPHP\Dubbo;
 
 
+use ZanPHP\Dubbo\Exception\RpcException;
+
 interface Invoker
 {
     /**

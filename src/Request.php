@@ -3,13 +3,15 @@
 namespace ZanPHP\Dubbo;
 
 
-class Request
+use ZanPHP\Contracts\Codec\PDU;
+
+class Request implements PDU
 {
     const HEARTBEAT_EVENT = null;
     const READONLY_EVENT = "R";
 
     private $id;
-    private $version;
+    private $version = DubboCodec::DUBBO_VERSION;
     private $isTwoWay = true;
     private $isEvent = false;
     private $isBroken = false;
@@ -21,12 +23,16 @@ class Request
             $this->id = self::newId();
         }
         $this->id = $id;
-        $this->version = DubboCodec::DUBBO_VERSION;
     }
 
     public function getId()
     {
         return $this->id;
+    }
+
+    public function setId($id)
+    {
+        $this->id = $id;
     }
 
     public function getVersion()

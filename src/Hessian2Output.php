@@ -4,7 +4,6 @@ namespace ZanPHP\Dubbo;
 
 
 use ZanPHP\HessianLite\Factory;
-use ZanPHP\HessianLite\Utils;
 
 class Hessian2Output implements Output
 {
@@ -68,29 +67,5 @@ class Hessian2Output implements Output
     public function writeObject(JavaValue $obj, JavaType $type = null)
     {
         return $obj->serialize();
-//        if ($obj === null) {
-//            return $this->writer->writeNull();
-//        } else if (is_array($obj)) {
-//            if (Utils::isListIterate($obj)) {
-//                return $this->writer->writeArray($obj);
-//            } else {
-//                $type = '';
-//                if (isset($obj['$type'])) {
-//                    $type = $obj['$type'];
-//                    unset($obj['$type']);
-//                }
-//                return $this->writer->writeMap($obj, $type);
-//            }
-//        } else if (is_object($obj)) {
-//            return $this->writer->writeObject($obj);
-//        } else {
-//            if ($type) {
-//                $serialization = $type->getSerialization();
-//                if ($serialization) {
-//                    return $serialization($obj);
-//                }
-//            }
-//            throw new DubboCodecException("UnExpected var to writeObject by hessian2");
-//        }
     }
 }

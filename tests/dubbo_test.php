@@ -17,22 +17,6 @@ require __DIR__ . "/../vendor/autoload.php";
 //$server->start();
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 //    private $magic;
 //    private $flag;
 //    private $status;

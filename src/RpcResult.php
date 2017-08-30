@@ -3,6 +3,8 @@
 namespace ZanPHP\Dubbo;
 
 
+use ZanPHP\Dubbo\Exception\DubboCodecException;
+
 class RpcResult implements Result
 {
     private $value;
@@ -41,6 +43,7 @@ class RpcResult implements Result
         return $this;
     }
 
+    // FIXME 读取并 SET Attachments
     public static function decode(Input $in)
     {
         $self = new static();

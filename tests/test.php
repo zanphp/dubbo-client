@@ -18,15 +18,13 @@ require  __DIR__ . "/../../hessian-lite/vendor/autoload.php";
 //$personArray = JavaType::createArray($personType);
 //echo $personArray->getName();
 //echo $personArray->getDesc();
-exit;
 
 
 $req = new Request();
-
 $invoke = new RpcInvocation();
-$invoke->setAttachment(Constants::DUBBO_VERSION_KEY, DubboCodec::DUBBO_VERSION);
-$invoke->setAttachment(Constants::PATH_KEY, "com.alibaba.dubbo.demo.DemoService");
-$invoke->setAttachment(Constants::VERSION_KEY, "0.0.0");
+$invoke->addAttachment(Constants::DUBBO_VERSION_KEY, DubboCodec::DUBBO_VERSION);
+$invoke->addAttachment(Constants::PATH_KEY, "com.alibaba.dubbo.demo.DemoService");
+$invoke->addAttachment(Constants::VERSION_KEY, "0.0.0");
 $invoke->setMethodName("sayHello");
 $invoke->setParameterTypes([JavaType::$T_String]);
 $invoke->setArguments([new JavaValue(JavaType::$T_String, "world")]);
@@ -36,7 +34,7 @@ $req->setTwoWay(true);
 $req->setData($invoke);
 
 $codec = new DubboCodec();
-//echo bin2hex($codec->encode($req));
+echo bin2hex($codec->encode($req));
 
 
 $ip = "127.0.0.1";

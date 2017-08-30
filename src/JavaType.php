@@ -2,11 +2,8 @@
 
 namespace ZanPHP\Dubbo;
 
-/**
- * Class JavaType
- * @author xiaofeng
- * @package ZanPHP\Dubbo
- */
+use ZanPHP\Exception\System\ClassNotFoundException;
+
 class JavaType
 {
     const JVM_VOID = 'V';
@@ -203,8 +200,7 @@ class JavaType
                 $desc = str_replace('/', '.', substr($desc, 1));
                 return static::createArray(static::getByDesc($desc));
             default:
-                // FIXME ClassNotFoundException
-                throw new \Exception("Class not found: $desc");
+                throw new ClassNotFoundException("Class not found: $desc");
         }
     }
 

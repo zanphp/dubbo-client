@@ -3,10 +3,14 @@
 namespace ZanPHP\Dubbo;
 
 
-class DubboCodec
+use ZanPHP\Contracts\Codec\Codec;
+use ZanPHP\Contracts\Codec\PDU;
+use ZanPHP\Dubbo\Exception\DubboCodecException;
+
+class DubboCodec implements Codec
 {
     const NAME = "dubbo";
-    const DUBBO_VERSION = "0.0.1";
+    const DUBBO_VERSION = "2.0.0";
     const HEADER_LENGTH = 16;
 
     // magic header. int16_t
@@ -24,13 +28,12 @@ class DubboCodec
     const RESPONSE_VALUE = 1;
     const RESPONSE_NULL_VALUE = 2;
 
-
     /**
-     * @param Request|Response $msg
+     * @param PDU|Request|Response $msg
      * @return string
      * @throws DubboCodecException
      */
-    public function encode($msg)
+    public function encode(PDU $msg)
     {
         if ($msg instanceof Request) {
             return $this->encodeRequest($msg);
@@ -109,7 +112,8 @@ class DubboCodec
             } catch (\Throwable $e) {
             } catch (\Exception $e) { }
             $res->setStatus(Response::CLIENT_ERROR);
-            $res->setErrorMessage("class " . gettype($e) . ",:" . $e->getMessage());
+            $exClass = gettype($e);
+            $res->setErrorMessage("ERROR decoding dubbo response: ($exClass)" . $e->getMessage());
             return $res;
         } else {
             $res->setErrorMessage($in->readString());
@@ -122,9 +126,9 @@ class DubboCodec
         try {
             return $in->readObject();
         } catch (\Throwable $t) {
-            echo $t, "\n";
+            echo_exception($t);
         } catch (\Exception $e) {
-            echo $e, "\n";
+            echo_exception($e);
         }
         return null;
     }
@@ -189,17 +193,10 @@ class DubboCodec
     private function encodeRequestData(Output $out, RpcInvocation $inv)
     {
         $buf = "";
-        $buf .= $out->writeString($inv->getAttachment(Constants::DUBBO_VERSION_KEY, self::DUBBO_VERSION));
-        $buf .= $out->writeString($inv->getAttachment(Constants::PATH_KEY));
-        $buf .= $out->writeString($inv->getAttachment(Constants::VERSION_KEY));
+        $buf .= $out->writeString($inv->getDubboVersion() ?: static::DUBBO_VERSION);
+        $buf .= $out->writeString($inv->getServiceName());
+        $buf .= $out->writeString($inv->getMethodVersion());
         $buf .= $out->writeString($inv->getMethodName());
-
-        $inv->removeAttachment(Constants::PATH_KEY);
-        $inv->removeAttachment(Constants::GROUP_KEY);
-        $inv->removeAttachment(Constants::VERSION_KEY);
-        $inv->removeAttachment(Constants::DUBBO_VERSION_KEY);
-        $inv->removeAttachment(Constants::TOKEN_KEY);
-        $inv->removeAttachment(Constants::TIMEOUT_KEY);
 
         // FIXME ?!
 //        if (substr(self::DUBBO_VERSION, 0, 3) === "2.8") {
