@@ -173,6 +173,7 @@ class DubboClient implements Async, Heartbeatable
         $codec = new DubboCodec();
         $resp = $codec->decode($data);
 
+        // dubbo 是双向心跳
         if ($resp instanceof Request) {
             if ($resp->isHeartbeat()) {
                 $this->pong($resp);
@@ -408,6 +409,6 @@ class DubboClient implements Async, Heartbeatable
     {
         // FIXME
         $pong = hex2bin("dabb22140000000000000002000000014e");
-        $this->swooleClient->send(hex2bin($pong));
+        $this->swooleClient->send($pong);
     }
 }
