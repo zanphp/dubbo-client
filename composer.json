@@ -13,7 +13,7 @@
   },
   "autoload": {
     "psr-4": {
-      "ZanPHP\\DubboClient\\": "src/"
+      "ZanPHP\\Dubbo\\": "src/"
     }
   },
   "extra": {
