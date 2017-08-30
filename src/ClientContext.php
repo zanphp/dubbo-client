@@ -1,6 +1,6 @@
 <?php
 
-namespace ZanPHP\DubboClient;
+namespace ZanPHP\Dubbo;
 
 use ZanPHP\Coroutine\Task;
 
