@@ -59,6 +59,11 @@ class DubboClient implements Async, Heartbeatable
 
     private static $seqTimerId = [];
 
+    /**
+     * @param Connection $conn
+     * @param $serviceName
+     * @return static
+     */
     public static function getInstance(Connection $conn, $serviceName)
     {
         $key = spl_object_hash($conn) . '_' . $serviceName;
