@@ -133,11 +133,11 @@ class DubboClient implements Async, Heartbeatable
         $req->setData($invoke);
         $req->setId($seq);
 
-        /** @var Codec $codec */
-        $codec = make("codec:dubbo");
 
         $ex = null;
         try {
+            /** @var Codec $codec */
+            $codec = new DubboCodec();
             $sendBuffer = $codec->encode($req);
             $this->dubboConnection->setLastUsedTime();
             $r = $this->swooleClient->send($sendBuffer);
