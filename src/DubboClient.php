@@ -170,8 +170,7 @@ class DubboClient implements Async, Heartbeatable
 
         /** @var Codec $codec */
         /** @var Response $resp */
-
-        $codec = make("codec:dubbo");
+        $codec = new DubboCodec();
         $resp = $codec->decode($data);
 
         if ($resp instanceof Request) {
@@ -381,7 +380,7 @@ class DubboClient implements Async, Heartbeatable
         $this->currentContext = $context;
 
         /** @var Codec $codec */
-        $codec = make("codec:dubbo");
+        $codec = new DubboCodec();
         $pdu = new Request();
         $pdu->setVersion(DubboCodec::DUBBO_VERSION);
         $pdu->setTwoWay(true);

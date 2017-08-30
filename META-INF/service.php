@@ -14,9 +14,9 @@ $container->bind("heartbeatable:dubbo", function($_, $args) {
 
 
 return [
-    \ZanPHP\Dubbo\DubboCodec::class => [
-        "interface" => \ZanPHP\Contracts\Codec\Codec::class,
-        "id" => "codec:dubbo",
-        "shared" => true,
-    ],
+//    \ZanPHP\Dubbo\DubboCodec::class => [
+//        "interface" => \ZanPHP\Contracts\Codec\Codec::class,
+//        "id" => "codec:dubbo",
+//        "shared" => true,
+//    ],
 ];
