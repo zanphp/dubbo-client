@@ -1,0 +1,24 @@
+{
+  "name": "zanphp/dubbo",
+  "type": "library",
+  "description": "hessian lite",
+  "require": {
+    "php": ">=5.6.0",
+    "zanphp/contracts": "dev-master",
+    "zanphp/coroutine": "dev-master",
+    "zanphp/timer": "dev-master",
+    "zanphp/rpc-context": "dev-master",
+    "zanphp/exception": "dev-master",
+    "zanphp/hessian-lite": "dev-master"
+  },
+  "autoload": {
+    "psr-4": {
+      "ZanPHP\\Dubbo\\": "src/"
+    }
+  },
+  "extra": {
+    "branch-alias": {
+      "dev-master": "1.0.x-dev"
+    }
+  }
+}
