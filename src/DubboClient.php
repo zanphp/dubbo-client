@@ -169,9 +169,18 @@ class DubboClient implements Async, Heartbeatable
         }
 
         /** @var Codec $codec */
-        $codec = make("codec:dubbo");
         /** @var Response $resp */
+
+        $codec = make("codec:dubbo");
         $resp = $codec->decode($data);
+
+        if ($resp instanceof Request) {
+            if ($resp->isHeartbeat()) {
+                $this->pong($resp);
+            }
+            return;
+        }
+
         if (!($resp instanceof Response)) {
             return;
         }
@@ -394,5 +403,12 @@ class DubboClient implements Async, Heartbeatable
         } catch (\Exception $e) {
             echo_exception($e);
         }
+    }
+
+    private function pong(Request $resp)
+    {
+        // FIXME
+        $pong = hex2bin("dabb22140000000000000002000000014e");
+        $this->swooleClient->send(hex2bin($pong));
     }
 }
