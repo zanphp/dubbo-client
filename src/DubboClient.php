@@ -381,7 +381,7 @@ class DubboClient implements Async, Heartbeatable
         $this->currentContext = $context;
 
         /** @var Codec $codec */
-        $codec = make("codec:nova");
+        $codec = make("codec:dubbo");
         $pdu = new Request();
         $pdu->setVersion(DubboCodec::DUBBO_VERSION);
         $pdu->setTwoWay(true);
