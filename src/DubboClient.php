@@ -97,11 +97,11 @@ class DubboClient implements Async, Heartbeatable
      * 泛化调用
      *
      * @param string $method
-     * @param JavaType[]|string[] $parameterTypes
-     * @param array $arguments
-     * @param null|int $timeout
+     * @param JavaValue[] $arguments
+     * @param int $timeout
      * @return \Generator
      * @throws DubboCodecException
+     * @throws InvalidArgumentException
      * @throws \Throwable
      *
      * method         方法名，如：findPerson，如果有重载方法，需带上参数列表，如：findPerson(java.lang.String)
@@ -112,15 +112,14 @@ class DubboClient implements Async, Heartbeatable
      *
      * Ljava/lang/String;[Ljava/lang/String;[Ljava/lang/Object;
      */
-    public function genericCall($method, array $parameterTypes, array $arguments, $timeout = self::DEFAULT_SEND_TIMEOUT)
+    public function genericCall($method, array $arguments, $timeout = self::DEFAULT_SEND_TIMEOUT)
     {
         $types = [];
-        foreach ($parameterTypes as $parameterType) {
-            if ($parameterType instanceof JavaType) {
-               $types[] = $parameterType->getName();
-            } else {
-                $types[] = strval($parameterType);
+        foreach ($arguments as $argument) {
+            if (!($argument instanceof JavaValue)) {
+                throw new InvalidArgumentException();
             }
+            $types[] = $argument->getType()->getName();
         }
 
         $method = new JavaValue(JavaType::$T_String, $method);

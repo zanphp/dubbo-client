@@ -126,6 +126,17 @@ class JavaType
         $this->serialization = $serialization;
     }
 
+    public function __toString()
+    {
+        return $this->name;
+    }
+
+    public function __debugInfo()
+    {
+        return $this->name;
+    }
+
+
     private static $NAME_TO_TYPE = [];
 
     private static function register(JavaType $type)
