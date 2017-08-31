@@ -94,7 +94,37 @@ class DubboClient implements Async, Heartbeatable
     }
 
     /**
-     * 泛化调用
+     * 泛化调用(不能用于重载方法调用)
+     *
+     * @param string $method
+     * @param array $arguments
+     * @param int $timeout
+     * @return \Generator
+     * @throws DubboCodecException
+     * @throws InvalidArgumentException
+     * @throws \Throwable
+     *
+     * method         方法名，如：findPerson，如果有重载方法，需带上参数列表，如：findPerson(java.lang.String)
+     * parameterTypes 参数类型
+     * args           参数列表
+     *
+     * Object $invoke(String method, String[] parameterTypes, Object[] args) throws GenericException;
+     *
+     * Ljava/lang/String;[Ljava/lang/String;[Ljava/lang/Object;
+     */
+    public function genericCall($method, array $arguments, $timeout = self::DEFAULT_SEND_TIMEOUT)
+    {
+        $method = new JavaValue(JavaType::$T_String, $method);
+        $types = new JavaValue(JavaType::$T_Strings, []);
+        $args = new JavaValue(JavaType::$T_Objects, $arguments);
+
+        yield setRpcContext("interface", $this->serviceName);
+        yield setRpcContext("generic", "true");
+        yield $this->call(self::GENERIC_METHOD, [$method, $types, $args], $timeout);
+    }
+
+    /**
+     * 泛化调用(需要提供类型信息, 可用于重载方法)
      *
      * @param string $method
      * @param JavaValue[] $arguments
@@ -112,7 +142,7 @@ class DubboClient implements Async, Heartbeatable
      *
      * Ljava/lang/String;[Ljava/lang/String;[Ljava/lang/Object;
      */
-    public function genericCall($method, array $arguments, $timeout = self::DEFAULT_SEND_TIMEOUT)
+    public function genericCallEx($method, array $arguments, $timeout = self::DEFAULT_SEND_TIMEOUT)
     {
         $types = [];
         foreach ($arguments as $argument) {
