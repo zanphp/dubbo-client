@@ -3,9 +3,9 @@
 namespace ZanPHP\Dubbo;
 
 
-use ZanPHP\Exception\ZanException;
+use ZanPHP\Dubbo\Exception\RpcException;
 
-class JavaException extends ZanException
+class JavaException extends RpcException
 {
     protected $bt = [];
     protected $class;
