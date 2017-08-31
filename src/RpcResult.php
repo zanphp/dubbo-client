@@ -4,7 +4,7 @@ namespace ZanPHP\Dubbo;
 
 
 use ZanPHP\Dubbo\Exception\DubboCodecException;
-use ZanPHP\Dubbo\Exception\RpcException;
+use ZanPHP\Dubbo\Exception\JavaException;
 
 class RpcResult implements Result
 {
