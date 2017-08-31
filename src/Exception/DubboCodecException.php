@@ -3,8 +3,8 @@
 namespace ZanPHP\Dubbo\Exception;
 
 
-use ZanPHP\Exception\ZanException;
+use ZanPHP\Exception\Codec\CodecException;
 
-class DubboCodecException extends ZanException
+class DubboCodecException extends CodecException
 {
 }

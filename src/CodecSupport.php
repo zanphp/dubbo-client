@@ -5,7 +5,6 @@ namespace ZanPHP\Dubbo;
 
 use ZanPHP\Dubbo\Exception\DubboCodecException;
 use ZanPHP\HessianLite\Factory;
-use ZanPHP\HessianLite\Utils;
 
 class CodecSupport
 {
@@ -196,14 +195,10 @@ class CodecSupport
                     } else if (is_object($v)) {
                         return $writer->writeObject($v);
                     } else if (is_array($v)) {
-                        if (Utils::isListKeys($v)) {
-                            return $writer->writeArray($v);
-                        } else {
-                            return $writer->writeMap($v);
-                        }
+                        return $writer->writeArray($v);
                     } else {
-                        // FIXME
-                        throw new \Exception();
+                        $type = gettype($v);
+                        throw new DubboCodecException("can not find default JavaTypeSerialization for php type $type");
                     }
                 };
         }
