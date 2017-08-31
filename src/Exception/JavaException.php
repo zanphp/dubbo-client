@@ -41,7 +41,7 @@ class JavaException extends RpcException
         $s = "";
         $i = 0;
         foreach (array_reverse($this->bt) as $frame) {
-            $s .= "#[$i] {$frame["declaringClass"]}.{$frame["methodName"]} at [{$frame["fileName"]}:{$frame["lineNumber"]}]";
+            $s .= "#[$i] {$frame["declaringClass"]}.{$frame["methodName"]} at [{$frame["fileName"]}:{$frame["lineNumber"]}]\n";
             $i++;
         }
 
