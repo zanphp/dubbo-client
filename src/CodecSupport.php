@@ -5,6 +5,7 @@ namespace ZanPHP\Dubbo;
 
 use ZanPHP\Dubbo\Exception\DubboCodecException;
 use ZanPHP\HessianLite\Factory;
+use ZanPHP\HessianLite\Utils;
 
 class CodecSupport
 {
@@ -195,7 +196,11 @@ class CodecSupport
                     } else if (is_object($v)) {
                         return $writer->writeObject($v);
                     } else if (is_array($v)) {
-                        return $writer->writeMap($v);
+                        if (Utils::isListKeys($v)) {
+                            return $writer->writeArray($v);
+                        } else {
+                            return $writer->writeMap($v);
+                        }
                     } else {
                         // FIXME
                         throw new \Exception();

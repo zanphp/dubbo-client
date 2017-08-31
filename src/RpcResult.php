@@ -54,6 +54,7 @@ class RpcResult implements Result
                 $self->setValue(null);
                 break;
             case DubboCodec::RESPONSE_VALUE:
+                // FIXME 按照请求预期返回值类型读取, 暂时读取所有
                 $self->setValue($in->readAll());
                 break;
             case DubboCodec::RESPONSE_WITH_EXCEPTION:
