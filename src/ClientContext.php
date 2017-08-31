@@ -18,10 +18,8 @@ class ClientContext
     private $debuggerTrace;
     private $hawk;
 
-    private $inputArguments;
-    private $outputStruct;
-    private $exceptionStruct;
-    private $packer;
+    private $parameterTypes;
+    private $arguments;
 
 
     /**
@@ -137,49 +135,23 @@ class ClientContext
         $this->hawk = $hawk;
     }
 
-
-
-
-    ///
-
-
-    public function getPacker()
+    public function setParameterTypes($parameterTypes)
     {
-        return $this->packer;
+        $this->parameterTypes = $parameterTypes;
     }
 
-    public function setPacker($packer)
+    public function getParameterTypes()
     {
-        $this->packer = $packer;
+        return $this->parameterTypes;
     }
 
-    public function setInputArguments($inputArguments)
+    public function getArguments()
     {
-        $this->inputArguments = $inputArguments;
+        return $this->arguments;
     }
 
-    public function getInputArguments()
+    public function setArguments($arguments)
     {
-        return $this->inputArguments;
-    }
-
-    public function getOutputStruct()
-    {
-        return $this->outputStruct;
-    }
-
-    public function setOutputStruct($outputStruct)
-    {
-        $this->outputStruct = $outputStruct;
-    }
-
-    public function getExceptionStruct()
-    {
-        return $this->exceptionStruct;
-    }
-
-    public function setExceptionStruct($exceptionStruct)
-    {
-        $this->exceptionStruct = $exceptionStruct;
+        $this->arguments = $arguments;
     }
 }

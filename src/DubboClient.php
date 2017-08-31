@@ -90,15 +90,14 @@ class DubboClient implements Async, Heartbeatable
         $this->currentContext->setTask($task);
     }
 
-    public function call($method, $inputArguments, $outputStruct, $exceptionStruct, $timeout = null)
+    public function call($method, array $parameterTypes, array $arguments, $timeout = null)
     {
         $seq = nova_get_sequence();
         $attachment = (yield getRpcContext(null, []));
 
         $context = new ClientContext();
-        $context->setInputArguments($inputArguments);
-        $context->setOutputStruct($outputStruct);
-        $context->setExceptionStruct($exceptionStruct);
+        $context->setParameterTypes($parameterTypes);
+        $context->setArguments($arguments);
         $context->setReqServiceName($this->serviceName);
         $context->setReqMethodName($method);
         $context->setReqSeqNo($seq);
@@ -122,9 +121,8 @@ class DubboClient implements Async, Heartbeatable
         $invoke->setServiceName($this->serviceName);
         $invoke->setMethodVersion("0.0.0");
         $invoke->setMethodName($method);
-        // FIXME
-        $invoke->setParameterTypes([JavaType::$T_String]);
-        $invoke->setArguments([new JavaValue(JavaType::$T_String, "world")]);
+        $invoke->setParameterTypes($parameterTypes);
+        $invoke->setArguments($arguments);
         // FIXME  $attachmentContent = json_encode($attachment ?: new \stdClass());
         $invoke->setAttachments($attachment ?: []);
 
@@ -296,7 +294,7 @@ class DubboClient implements Async, Heartbeatable
 
         $serviceName = $context->getReqServiceName();
         $methodName = $context->getReqMethodName();
-        $args = $context->getInputArguments();
+        $args = $context->getParameterTypes();
 
         if ($trace instanceof Trace) {
             $traceHandle = $trace->transactionBegin(Constant::NOVA_CLIENT, "$serviceName.$methodName");
