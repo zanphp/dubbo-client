@@ -90,6 +90,15 @@ class DubboClient implements Async, Heartbeatable
         $this->currentContext->setTask($task);
     }
 
+    /**
+     * @param $method
+     * @param JavaType[] $parameterTypes
+     * @param JavaValue[] $arguments
+     * @param null|int $timeout
+     * @return \Generator
+     * @throws DubboCodecException
+     * @throws \Throwable
+     */
     public function call($method, array $parameterTypes, array $arguments, $timeout = null)
     {
         $seq = nova_get_sequence();
