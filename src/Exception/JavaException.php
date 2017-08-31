@@ -16,7 +16,7 @@ class JavaException extends RpcException
         $trace = isset($obj->stackTrace) ? $obj->stackTrace : [];
         $this->bt = $this->parserStackTrace($trace);
 
-        parent::__construct($this->msg, 0, null, $this->bt);
+        parent::__construct("[$this->class]$this->msg", 0, null, $this->bt);
     }
 
     private function parserStackTrace(array $bt)
