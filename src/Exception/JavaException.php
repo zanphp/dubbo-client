@@ -1,9 +1,7 @@
 <?php
 
-namespace ZanPHP\Dubbo;
+namespace ZanPHP\Dubbo\Exception;
 
-
-use ZanPHP\Dubbo\Exception\RpcException;
 
 class JavaException extends RpcException
 {
