@@ -99,7 +99,7 @@ class DubboClient implements Async, Heartbeatable
      * @throws DubboCodecException
      * @throws \Throwable
      */
-    public function call($method, array $parameterTypes, array $arguments, $timeout = null)
+    public function call($method, array $parameterTypes, array $arguments, $timeout = self::DEFAULT_SEND_TIMEOUT)
     {
         $parameterTypes = array_values($parameterTypes);
         $arguments = array_values($arguments);
