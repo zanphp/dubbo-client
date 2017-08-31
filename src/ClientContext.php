@@ -17,8 +17,6 @@ class ClientContext
     private $trace;
     private $debuggerTrace;
     private $hawk;
-
-    private $parameterTypes;
     private $arguments;
 
 
@@ -133,16 +131,6 @@ class ClientContext
     public function setHawk($hawk)
     {
         $this->hawk = $hawk;
-    }
-
-    public function setParameterTypes($parameterTypes)
-    {
-        $this->parameterTypes = $parameterTypes;
-    }
-
-    public function getParameterTypes()
-    {
-        return $this->parameterTypes;
     }
 
     public function getArguments()

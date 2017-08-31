@@ -193,7 +193,7 @@ class DubboCodec implements Codec
     private function encodeRequestData(Output $out, RpcInvocation $inv)
     {
         $buf = "";
-        $buf .= $out->writeString($inv->getDubboVersion() ?: static::DUBBO_VERSION);
+        $buf .= $out->writeString($inv->getVersion() ?: static::DUBBO_VERSION);
         $buf .= $out->writeString($inv->getServiceName());
         $buf .= $out->writeString($inv->getMethodVersion());
         $buf .= $out->writeString($inv->getMethodName());
@@ -203,7 +203,7 @@ class DubboCodec implements Codec
 //            $buf .= $out->write(-1);
 //        }
 
-        $buf .= $out->writeString(JavaType::getDescs($inv->getParameterTypes()));
+        $buf .= $out->writeString(JavaType::types2desc($inv->getParameterTypes()));
         $args = $inv->getArguments();
         $paraTypes = $inv->getParameterTypes();
         foreach ($args as $i => $arg) {

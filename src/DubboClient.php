@@ -15,6 +15,7 @@ use ZanPHP\Coroutine\Task;
 use ZanPHP\Dubbo\Exception\ClientErrorException;
 use ZanPHP\Dubbo\Exception\ClientTimeoutException;
 use ZanPHP\Dubbo\Exception\DubboCodecException;
+use ZanPHP\Exception\System\InvalidArgumentException;
 use ZanPHP\Log\Log;
 use ZanPHP\NovaConnectionPool\NovaConnection;
 use ZanPHP\Timer\Timer;
@@ -24,6 +25,8 @@ use Thrift\Exception\TApplicationException;
 class DubboClient implements Async, Heartbeatable
 {
     const DEFAULT_SEND_TIMEOUT = 3000;
+
+    const GENERIC_METHOD = '$invoke';
 
     /**
      * @var NovaConnection
@@ -91,33 +94,67 @@ class DubboClient implements Async, Heartbeatable
     }
 
     /**
-     * @param $method
-     * @param JavaType[] $parameterTypes
+     * 泛化调用
+     *
+     * @param string $method
+     * @param JavaType[]|string[] $parameterTypes
      * @param array $arguments
      * @param null|int $timeout
      * @return \Generator
      * @throws DubboCodecException
      * @throws \Throwable
+     *
+     * method         方法名，如：findPerson，如果有重载方法，需带上参数列表，如：findPerson(java.lang.String)
+     * parameterTypes 参数类型
+     * args           参数列表
+     *
+     * Object $invoke(String method, String[] parameterTypes, Object[] args) throws GenericException;
+     *
+     * Ljava/lang/String;[Ljava/lang/String;[Ljava/lang/Object;
      */
-    public function call($method, array $parameterTypes, array $arguments, $timeout = self::DEFAULT_SEND_TIMEOUT)
+    public function genericCall($method, array $parameterTypes, array $arguments, $timeout = self::DEFAULT_SEND_TIMEOUT)
     {
-        $parameterTypes = array_values($parameterTypes);
-        $arguments = array_values($arguments);
-        if (count($parameterTypes) !== count($arguments)) {
-            throw new \InvalidArgumentException();
+        $types = [];
+        foreach ($parameterTypes as $parameterType) {
+            if ($parameterType instanceof JavaType) {
+               $types[] = $parameterType->getName();
+            } else {
+                $types[] = strval($parameterType);
+            }
         }
 
-        // FIXME check parameterType 与 argument 的类型
-        foreach ($arguments as $i => $argument) {
-            $arguments[$i] = new JavaValue($parameterTypes[$i], $argument);
-        }
+        $method = new JavaValue(JavaType::$T_String, $method);
+        $types = new JavaValue(JavaType::$T_Strings, $types);
+        $args = new JavaValue(JavaType::$T_Objects, $arguments);
 
+        yield setRpcContext("interface", $this->serviceName);
+        yield setRpcContext("generic", "true");
+        yield $this->call(self::GENERIC_METHOD, [$method, $types, $args], $timeout);
+    }
+
+    /**
+     * @param string $method
+     * @param JavaValue[] $arguments
+     * @param int $timeout
+     * @return \Generator
+     * @throws DubboCodecException
+     * @throws InvalidArgumentException
+     * @throws \Throwable
+     */
+    public function call($method, array $arguments, $timeout = self::DEFAULT_SEND_TIMEOUT)
+    {
+        $parameterTypes = [];
+        foreach ($arguments as $argument) {
+            if (!($argument instanceof JavaValue)) {
+                throw new InvalidArgumentException();
+            }
+            $parameterTypes[] = $argument->getType();
+        }
 
         $seq = nova_get_sequence();
         $attachment = (yield getRpcContext(null, []));
 
         $context = new ClientContext();
-        $context->setParameterTypes($parameterTypes);
         $context->setArguments($arguments);
         $context->setReqServiceName($this->serviceName);
         $context->setReqMethodName($method);
@@ -134,17 +171,13 @@ class DubboClient implements Async, Heartbeatable
         }
         $this->currentContext = $context;
 
-        // FIXME
-        // $thriftBin = $packer->encode(TMessageType::CALL, $method, $inputArguments, Packer::CLIENT);
-
         $invoke = new RpcInvocation();
-        $invoke->setDubboVersion(DubboCodec::DUBBO_VERSION);
+        $invoke->setVersion(DubboCodec::DUBBO_VERSION);
         $invoke->setServiceName($this->serviceName);
         $invoke->setMethodVersion("0.0.0");
         $invoke->setMethodName($method);
         $invoke->setParameterTypes($parameterTypes);
         $invoke->setArguments($arguments);
-        // FIXME  $attachmentContent = json_encode($attachment ?: new \stdClass());
         $invoke->setAttachments($attachment ?: []);
 
         $req = new Request();
@@ -315,7 +348,7 @@ class DubboClient implements Async, Heartbeatable
 
         $serviceName = $context->getReqServiceName();
         $methodName = $context->getReqMethodName();
-        $args = $context->getParameterTypes();
+        $args = $context->getArguments();
 
         if ($trace instanceof Trace) {
             $traceHandle = $trace->transactionBegin(Constant::NOVA_CLIENT, "$serviceName.$methodName");
@@ -426,8 +459,11 @@ class DubboClient implements Async, Heartbeatable
 
     private function pong(Request $resp)
     {
-        // FIXME
-        $pong = hex2bin("dabb22140000000000000002000000014e");
+        // FIXME codec ...
+        static $pong;
+        if ($pong === null) {
+            $pong = hex2bin("dabb22140000000000000002000000014e");
+        }
         $this->swooleClient->send($pong);
     }
 }

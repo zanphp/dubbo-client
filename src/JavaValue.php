@@ -8,29 +8,47 @@ class JavaValue
     /**
      * @var JavaType
      */
-    public $type;
-    public $value;
+    private $type;
+
+    private $value;
 
     /**
      * JavaValue constructor.
-     * @param JavaType|string $typeOrName java正常书写类型(需要提前注册) 或者 JavaType
+     * @param JavaType|string $name ~java类型字符串表示 或者 JavaType~
      * @param $value
      */
-    public function __construct($typeOrName, $value)
+    public function __construct($name, $value)
     {
-        $type = null;
-        if ($typeOrName instanceof JavaType) {
-            $type = $typeOrName;
+        if ($name instanceof JavaType) {
+            $this->type = $name;
         } else {
-            $type = JavaType::getByName($typeOrName);
+            $this->type = JavaType::name2type($name);
         }
+        $this->setValue($value);
+    }
 
-        if (!$type) {
-            throw new \InvalidArgumentException("java type $typeOrName still not registed");
-        }
+    /**
+     * @return JavaType
+     */
+    public function getType()
+    {
+        return $this->type;
+    }
 
-        $this->type = $type;
-        $this->value = $type->valid($value);
+    /**
+     * @return mixed
+     */
+    public function getValue()
+    {
+        return $this->value;
+    }
+
+    /**
+     * @param mixed $value
+     */
+    public function setValue($value)
+    {
+        $this->value = $this->type->valid($value);
     }
 
     // FIXME dubbo/hessian-lite/src/main/java/com/alibaba/com/caucho/hessian/io/SerializerFactory.java

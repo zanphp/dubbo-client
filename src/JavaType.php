@@ -4,8 +4,18 @@ namespace ZanPHP\Dubbo;
 
 use ZanPHP\Exception\System\ClassNotFoundException;
 
+
+/**
+ * Class JavaType
+ *      Java 类型系统表示(无泛型), 每种类型的type仅有一份, 可以直接比较对象
+ * @package ZanPHP\Dubbo
+ */
 class JavaType
 {
+    /**
+     * JVM_* Java类型的字节码表示格式
+     */
+
     const JVM_VOID = 'V';
     const JVM_BOOLEAN = 'Z';
     const JVM_BYTE = 'B';
@@ -23,21 +33,46 @@ class JavaType
     const ARRAY_DESC = '(?:\\[+(?:(?:[VZBCDFIJS])|' . self::CLASS_DESC . '))';
     const DESC_REGEX = '(?:(?:[VZBCDFIJS])|' . self::CLASS_DESC . '|' . self::ARRAY_DESC . ')';
 
-    private $name;
-    private $isPrimitive = false;
-    private $isArray = false;
     /**
+     * Java 类型字符串表示
+     *      void, int, boolean, char[], ...
+     *      java.lang.String
+     *      java.lang.Object[][]
+     *
+     * @var string
+     */
+    private $name;
+
+    /**
+     * 是否是Java原生类型
+     * @var bool
+     */
+    private $isPrimitive = false;
+
+    private $isArray = false;
+
+    /**
+     * 数组元素类型
      * @var JavaType
      */
     private $componentClass;
+
+    /**
+     * 字节码格式的类型表示, 用户dubbo协议
+     * @var
+     */
     private $desc;
 
     /**
+     * FIXME 补全内置类型 类型校验函数
+     * 注册到类型的校验函数, 用来校验该类型的value
      * @var callable
      */
     private $valid;
 
     /**
+     * FIXME 补全内类型 类型序列化函数
+     * 注册到类型的序列化函数, 用来序列化该类型value
      * @var callable
      */
     private $serialization;
@@ -91,26 +126,24 @@ class JavaType
         $this->serialization = $serialization;
     }
 
-    // -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+    private static $NAME_TO_TYPE = [];
 
-    private static $typeMap = [];
-
-    public static function register(JavaType $type)
+    private static function register(JavaType $type)
     {
-        static::$typeMap[$type->getName()] = $type;
+        static::$NAME_TO_TYPE[$type->getName()] = $type;
     }
 
-    public static function getByName($name)
+    private static function tryGetTypeByName($name)
     {
-        if (!isset(static::$typeMap[$name])) {
+        if (!isset(static::$NAME_TO_TYPE[$name])) {
             return null;
         }
-        return static::$typeMap[$name];
+        return static::$NAME_TO_TYPE[$name];
     }
 
     public static function createPrimitive($name, $desc)
     {
-        $type = self::getByName($name);
+        $type = self::tryGetTypeByName($name);
         if ($type) {
             return $type;
         }
@@ -126,7 +159,7 @@ class JavaType
 
     public static function createClass($class)
     {
-        $type = self::getByName($class);
+        $type = self::tryGetTypeByName($class);
         if ($type) {
             return $type;
         }
@@ -142,7 +175,7 @@ class JavaType
 
     public static function createArray(JavaType $componentClass)
     {
-        $type = self::getByName($componentClass->getName() . "[]");
+        $type = self::tryGetTypeByName($componentClass->getName() . "[]");
         if ($type) {
             return $type;
         }
@@ -156,15 +189,241 @@ class JavaType
         return $self;
     }
 
-    // -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+    /**
+     * @param JavaType $type
+     * @return string
+     */
+    public static function type2name(JavaType $type)
+    {
+        return $type->name;
+    }
 
     /**
+     * @param JavaType $type
+     * @return string
+     */
+    public static function type2desc(JavaType $type)
+    {
+        return $type->desc;
+    }
+
+    /**
+     * JavaType[] ==> desc
+     *
+     * JavaType::createArray(JavaType::$T_boolean) ==> "[Z"
+     * JavaType::$T_Object ==> "Ljava/lang/Object;"
+     * [JavaType::$T_String, JavaType::$T_Strings, JavaType::$T_Objects]
+     *      ==> Ljava/lang/String;[Ljava/lang/String;[Ljava/lang/Object;
+     *
+     * @param JavaType[] $types
+     * @return string
+     */
+    public static function types2desc(array $types)
+    {
+        if (empty($types)) {
+            return "";
+        }
+
+        $descs = [];
+        foreach ($types as $type) {
+            $descs[] = $type->getDesc();
+        }
+        return implode(";", $descs) . ";";
+    }
+
+    /**
+     * "boolean" => boolean.class
+     * "java.util.Map[][]" ==> JavaType::createArray(JavaType::createArray(JavaType::$T_Map))
+     *
+     * @param $name
+     * @return JavaType
+     */
+    public static function name2type($name)
+    {
+        if (strlen($name) === 0) {
+            throw new \InvalidArgumentException();
+        }
+
+        $type = self::tryGetTypeByName($name);
+        if ($type) {
+            return $type;
+        }
+
+        $c = 0;
+        $index = strpos($name, self::JVM_ARRAY);
+        if ($index > 0) {
+            $c = (strlen($name) - $index) / 2;
+            $name = substr($name, 0, $index);
+        }
+        $arr = str_repeat(self::JVM_ARRAY, $c);
+
+        if ($c === false) {
+            switch ($name) {
+                case "void":
+                    return JavaType::$T_void;
+                case "boolean":
+                    return JavaType::$T_boolean;
+                case "byte":
+                    return JavaType::$T_byte;
+                case "char":
+                    return JavaType::$T_char;
+                case "double":
+                    return JavaType::$T_double;
+                case "float":
+                    return JavaType::$T_float;
+                case "int":
+                    return JavaType::$T_int;
+                case "long":
+                    return JavaType::$T_long;
+                case "short":
+                    return JavaType::$T_short;
+            }
+        }
+
+        switch ($name) {
+            case "void":
+                $desc = $arr . self::JVM_VOID;
+                break;
+            case "boolean":
+                $desc = $arr . self::JVM_BOOLEAN;
+                break;
+            case "byte":
+                $desc = $arr . self::JVM_BYTE;
+                break;
+            case "char":
+                $desc = $arr . self::JVM_CHAR;
+                break;
+            case "double":
+                $desc = $arr . self::JVM_DOUBLE;
+                break;
+            case "float":
+                $desc = $arr . self::JVM_FLOAT;
+                break;
+            case "int":
+                $desc = $arr . self::JVM_INT;
+                break;
+            case "long":
+                $desc = $arr . self::JVM_LONG;
+                break;
+            case "short":
+                $desc = $arr . self::JVM_SHORT;
+                break;
+            default:
+                $desc = $arr ."L" . str_replace(".", "/", $name) . ";";
+        }
+        $type = self::desc2type($desc);
+        self::register($type);
+        return $type;
+    }
+
+    /**
+     * @param string $name
+     * @return string
+     */
+    public static function name2desc($name)
+    {
+        if (strlen($name) === 0) {
+            throw new \InvalidArgumentException();
+        }
+
+        $c = 0;
+        $index = strpos($name, self::JVM_ARRAY);
+        if ($index > 0) {
+            $c = (strlen($name) - $index) / 2;
+            $name = substr($name, 0, $index);
+        }
+        $arr = str_repeat(self::JVM_ARRAY, $c);
+        switch ($name) {
+            case "void":
+                return $arr . self::JVM_VOID;
+            case "boolean":
+                return $arr . self::JVM_BOOLEAN;
+            case "byte":
+                return $arr . self::JVM_BYTE;
+            case "char":
+                return $arr . self::JVM_CHAR;
+            case "double":
+                return $arr . self::JVM_DOUBLE;
+            case "float":
+                return $arr . self::JVM_FLOAT;
+            case "int":
+                return $arr . self::JVM_INT;
+            case "long":
+                return $arr . self::JVM_LONG;
+            case "short":
+                return $arr . self::JVM_SHORT;
+            default:
+                return $arr ."L" . str_replace(".", "/", $name) . ";";
+        }
+    }
+
+    /**
+     * @param string $desc
+     * @return string
+     * @throws \Exception
+     */
+    public static function desc2name($desc)
+    {
+        $desc = rtrim($desc, ';');
+        if (strlen($desc) === 0) {
+            throw new \InvalidArgumentException();
+        }
+
+        $lastIndex = strrpos($desc, self::JVM_ARRAY);
+        if ($lastIndex === false) {
+            $c = 0;
+        } else {
+            $c = $lastIndex + 1;
+        }
+        $buf = "";
+        if (strlen($desc) === $c + 1) {
+            switch ($desc[$c]) {
+                case self::JVM_VOID:
+                    $buf .= "void";
+                    break;
+                case self::JVM_BOOLEAN:
+                    $buf .= "boolean";
+                    break;
+                case self::JVM_BYTE:
+                    $buf .= "byte";
+                    break;
+                case self::JVM_CHAR:
+                    $buf .= "char";
+                    break;
+                case self::JVM_DOUBLE:
+                    $buf .= "double";
+                    break;
+                case self::JVM_FLOAT:
+                    $buf .= "float";
+                    break;
+                case self::JVM_INT:
+                    $buf .= "int";
+                    break;
+                case self::JVM_LONG:
+                    $buf .= "long";
+                    break;
+                case self::JVM_SHORT:
+                    $buf .= "short";
+                    break;
+                default:
+                    throw new \Exception();
+            }
+        } else {
+            $buf .= str_replace("/", ".", substr($desc, $c + 1));
+        }
+        return $buf . str_repeat("[]", $c);
+    }
+
+    /**
+     * Ljava/lang/Object ==> JavaType::$T_Object
+     *
      * @param string $desc
      * @return JavaType
      * @throws \Exception
      */
-    public static function getByDesc($desc)
+    public static function desc2type($desc)
     {
+        $desc = rtrim($desc, ';');
         if (!strlen($desc)) {
             throw new \InvalidArgumentException();
         }
@@ -191,24 +450,26 @@ class JavaType
             case self::JVM_OBJECT:
                 $className = str_replace('/', '.', substr($desc, 1));
                 $className = rtrim($className, ";");
-                $type = static::getByName($className);
+                $type = static::tryGetTypeByName($className);
                 if ($type === null) {
                     $type = static::createClass($className);
                 }
                 return $type;
             case self::JVM_ARRAY:
                 $desc = str_replace('/', '.', substr($desc, 1));
-                return static::createArray(static::getByDesc($desc));
+                return static::createArray(static::desc2type($desc));
             default:
                 throw new ClassNotFoundException("Class not found: $desc");
         }
     }
 
     /**
+     * Ljava/lang/Object;I ==> [JavaType::$T_Object, JavaType:$T_int]
+     *
      * @param string $desc
      * @return JavaType[]
      */
-    public static function getByDescs($desc)
+    public static function descs2type($desc)
     {
         if (strlen($desc) === 0) {
             return [];
@@ -217,29 +478,10 @@ class JavaType
         $types = [];
         if (preg_match_all('#' . self::DESC_REGEX . '#', $desc, $matches)) {
             foreach ($matches[0] as $desc) {
-                $types[] = static::getByDesc($desc);
+                $types[] = static::desc2type($desc);
             }
         }
         return $types;
-    }
-
-    // -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-
-    /**
-     * @param JavaType[] $types
-     * @return string
-     */
-    public static function getDescs(array $types)
-    {
-        if (empty($types)) {
-            return "";
-        }
-
-        $descs = [];
-        foreach ($types as $type) {
-            $descs[] = $type->getDesc();
-        }
-        return implode(";", $descs) . ";";
     }
 
     // -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
@@ -270,6 +512,11 @@ class JavaType
     public static $T_HashMap;
     public static $T_Map;
     public static $T_Dictionary;
+    public static $T_Object;
+
+    // for generic invoke
+    public static $T_Strings;
+    public static $T_Objects;
 }
 
 
@@ -299,5 +546,8 @@ JavaType::$T_Enumeration = JavaType::createClass('java.util.Enumeration');
 JavaType::$T_HashMap = JavaType::createClass('java.util.HashMap');
 JavaType::$T_Map = JavaType::createClass('java.util.Map');
 JavaType::$T_Dictionary = JavaType::createClass('java.util.Dictionary');
+JavaType::$T_Object = JavaType::createClass('java.lang.Object');
 
 JavaType::$T_chars = JavaType::createArray(JavaType::$T_char);
+JavaType::$T_Strings = JavaType::createArray(JavaType::$T_String);
+JavaType::$T_Objects = JavaType::createArray(JavaType::$T_Object);
