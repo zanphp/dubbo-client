@@ -51,9 +51,10 @@ class RpcResult implements Result
         $flag = $in->read(); // !!!!!
         switch ($flag) {
             case DubboCodec::RESPONSE_NULL_VALUE:
+                $self->setValue(null);
                 break;
             case DubboCodec::RESPONSE_VALUE:
-                $self->setValue($in->readObject());
+                $self->setValue($in->readAll());
                 break;
             case DubboCodec::RESPONSE_WITH_EXCEPTION:
                 $ex = $in->readObject();

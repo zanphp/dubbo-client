@@ -26,4 +26,6 @@ interface Input
     public function readBytes();
 
     public function readObject(JavaType $type = null);
+
+    public function readAll();
 }

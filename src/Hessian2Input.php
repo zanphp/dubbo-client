@@ -4,6 +4,7 @@ namespace ZanPHP\Dubbo;
 
 
 use ZanPHP\HessianLite\Factory;
+use ZanPHP\HessianLite\StreamEOF;
 
 class Hessian2Input implements Input
 {
@@ -68,5 +69,18 @@ class Hessian2Input implements Input
     public function readObject(JavaType $type = null)
     {
         return $this->parser->parseCheck(null, "object,list,map,null");
+    }
+
+    public function readAll()
+    {
+        $r = [];
+        while (true) {
+            try {
+                $r[] = $this->parser->parseCheck();
+            } catch (StreamEOF $_) {
+                break;
+            }
+        }
+        return $r;
     }
 }
