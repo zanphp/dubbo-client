@@ -93,7 +93,7 @@ class DubboClient implements Async, Heartbeatable
     /**
      * @param $method
      * @param JavaType[] $parameterTypes
-     * @param JavaValue[] $arguments
+     * @param array $arguments
      * @param null|int $timeout
      * @return \Generator
      * @throws DubboCodecException
@@ -101,6 +101,18 @@ class DubboClient implements Async, Heartbeatable
      */
     public function call($method, array $parameterTypes, array $arguments, $timeout = null)
     {
+        $parameterTypes = array_values($parameterTypes);
+        $arguments = array_values($arguments);
+        if (count($parameterTypes) !== count($arguments)) {
+            throw new \InvalidArgumentException();
+        }
+
+        // FIXME check parameterType 与 argument 的类型
+        foreach ($arguments as $i => $argument) {
+            $arguments[$i] = new JavaValue($parameterTypes[$i], $argument);
+        }
+
+
         $seq = nova_get_sequence();
         $attachment = (yield getRpcContext(null, []));
 
