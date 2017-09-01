@@ -190,16 +190,7 @@ class CodecSupport
             default:
                 $serialization = function($v) {
                     $writer = Factory::getWriter();
-                    if ($v === null) {
-                        return $writer->writeNull();
-                    } else if (is_object($v)) {
-                        return $writer->writeObject($v);
-                    } else if (is_array($v)) {
-                        return $writer->writeArray($v);
-                    } else {
-                        $type = gettype($v);
-                        throw new DubboCodecException("can not find default JavaTypeSerialization for php type $type");
-                    }
+                    return $writer->writeValue($v);
                 };
         }
         return $serialization;
