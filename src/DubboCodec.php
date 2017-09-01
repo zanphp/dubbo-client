@@ -214,7 +214,7 @@ class DubboCodec implements Codec
                 throw new \InvalidArgumentException();
             }
         }
-        $buf .= $out->writeObject($inv->getAttachments());
+        $buf .= $out->writeObject(new JavaValue(JavaType::$T_Map, $inv->getAttachments() ?: []));
         return $buf;
     }
 

@@ -14,9 +14,4 @@ interface Invocation
     public function getAttachments();
 
     public function getAttachment($key, $defaultValue);
-
-    /**
-     * @return Invoker
-     */
-    public function getInvoker();
 }

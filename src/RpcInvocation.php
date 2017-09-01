@@ -23,12 +23,6 @@ class RpcInvocation implements Invocation
     private $arguments = [];
     private $attachments = [];
 
-    /**
-     * FIXME
-     * @var
-     */
-    private $invoker;
-
     public function getVersion()
     {
         return $this->version;
@@ -94,7 +88,7 @@ class RpcInvocation implements Invocation
 
     public function getAttachments()
     {
-        return new JavaValue(JavaType::$T_Map, $this->attachments);
+        return $this->attachments;
     }
 
     public function setAttachments($attachments)
@@ -175,14 +169,5 @@ class RpcInvocation implements Invocation
     {
         // FIXME
         return $arg;
-    }
-
-    /**
-     * @return Invoker
-     */
-    public function getInvoker()
-    {
-        // FIXME
-        return null;
     }
 }
