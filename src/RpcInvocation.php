@@ -5,7 +5,7 @@ namespace ZanPHP\Dubbo;
 
 class RpcInvocation implements Invocation
 {
-    private $version = DubboCodec::DUBBO_VERSION;
+    private $version = Constants::DUBBO_VERSION;
 
     private $serviceName;
 
@@ -132,42 +132,27 @@ class RpcInvocation implements Invocation
         $args = [];
         $self->parameterTypes = JavaType::descs2type($desc);
         $argLen = count($self->parameterTypes);
+
         // read args
         for ($i = 0; $i < $argLen; $i++) {
-            // FIXME 做一个类型映射表, 按照java的类型读数据....
             $type = $self->parameterTypes[$i];
-            $args[] = $in->read();
+            $unserialize = $type->getUnserialize();
+            $args[] = $unserialize($in);
         }
 
         // read attachments
-        // !!! 使用object来读取map
-        $map = $in->readObject();
+        // FIXME test
+        $map = $in->read(); // readObject??
         if (is_array($map) && $map) {
             $self->attachments = $map;
         }
 
         //decode argument
         foreach ($args as $i => $arg) {
-            $args[$i] = static::decodeInvocationArgument($self, $self->parameterTypes[$i], $arg);
+            $args[$i] = new JavaValue($self->parameterTypes[$i], $arg);
         }
         $self->arguments = $args;
 
         return $self;
-    }
-
-    public static function decodeInvocationArgument(RpcInvocation $inv, JavaType $paraType, $rawArg)
-    {
-        //  FIXME
-        //如果是callback，则创建proxy到客户端，方法的执行可通过channel调用到client端的callback接口
-        //decode时需要根据channel及env获取url
-        // /dubbo-rpc/dubbo-rpc-default/src/main/java/com/alibaba/dubbo/rpc/protocol/dubbo/CallbackServiceCodec.java
-
-        return new JavaValue($paraType, $rawArg);
-    }
-
-    public static function encodeInvocationArgument(RpcInvocation $inv, $paraType, $arg)
-    {
-        // FIXME
-        return $arg;
     }
 }

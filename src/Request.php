@@ -11,7 +11,7 @@ class Request implements PDU
     const READONLY_EVENT = "R";
 
     private $id;
-    private $version = DubboCodec::DUBBO_VERSION;
+    private $version = Constants::DUBBO_VERSION;
     private $isTwoWay = true;
     private $isEvent = false;
     private $isBroken = false;

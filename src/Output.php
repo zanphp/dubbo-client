@@ -25,5 +25,5 @@ interface Output
 
     public function writeBin($v);
 
-    public function writeObject(JavaValue $obj, JavaType $type = null);
+    public function writeJavaValue(JavaValue $obj);
 }

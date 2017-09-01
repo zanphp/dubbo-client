@@ -18,6 +18,7 @@ use ZanPHP\Dubbo\Exception\DubboCodecException;
 use ZanPHP\Exception\System\InvalidArgumentException;
 use ZanPHP\Log\Log;
 use ZanPHP\NovaConnectionPool\NovaConnection;
+use ZanPHP\Support\Json;
 use ZanPHP\Timer\Timer;
 use Thrift\Exception\TApplicationException;
 
@@ -94,6 +95,37 @@ class DubboClient implements Async, Heartbeatable
     {
         $this->currentContext->setCb($callback);
         $this->currentContext->setTask($task);
+    }
+
+    /**
+     * 泛化调用(不能用于重载方法调用)
+     *
+     * @param string $method
+     * @param array $arguments
+     * @param int $timeout
+     * @return \Generator
+     * @throws DubboCodecException
+     * @throws InvalidArgumentException
+     * @throws \Throwable
+     *
+     * method         方法名，如：findPerson，如果有重载方法，需带上参数列表，如：findPerson(java.lang.String)
+     * parameterTypes 参数类型
+     * args           参数列表
+     *
+     * Object $invoke(String method, String[] parameterTypes, String jsonArgs) throws GenericException;
+     *
+     * Ljava/lang/String;[Ljava/lang/String;[Ljava/lang/Object;
+     */
+    public function genericCallJson($method, array $arguments, $timeout = self::DEFAULT_SEND_TIMEOUT)
+    {
+        $method = new JavaValue(JavaType::$T_String, $method);
+        $types = new JavaValue(JavaType::$T_Strings, []);
+        $args = new JavaValue(JavaType::$T_String, Json::encode($arguments));
+
+//        yield setContext("dubbo::generic::attachSerialize", [Json::class, "encode"]);
+        yield setRpcContext("interface", $this->serviceName);
+        yield setRpcContext("generic", "true");
+        yield $this->call(self::GENERIC_METHOD, [$method, $types, $args], null, $timeout);
     }
 
     /**
@@ -208,7 +240,7 @@ class DubboClient implements Async, Heartbeatable
         $this->currentContext = $context;
 
         $invoke = new RpcInvocation();
-        $invoke->setVersion(DubboCodec::DUBBO_VERSION);
+        $invoke->setVersion(Constants::DUBBO_VERSION);
         $invoke->setServiceName($this->serviceName);
         $invoke->setMethodVersion("0.0.0");
         $invoke->setMethodName($method);
@@ -354,6 +386,7 @@ class DubboClient implements Async, Heartbeatable
         }
 
         if (make(Repository::class)->get('log.zan_framework')) {
+            /** @var \Throwable $exception */
             yield Log::make('zan_framework')->error($exception->getMessage(), [
                 'exception' => $exception,
                 'app' => getenv("appname"),
@@ -474,7 +507,7 @@ class DubboClient implements Async, Heartbeatable
         /** @var Codec $codec */
         $codec = new DubboCodec();
         $pdu = new Request();
-        $pdu->setVersion(DubboCodec::DUBBO_VERSION);
+        $pdu->setVersion(Constants::DUBBO_VERSION);
         $pdu->setTwoWay(true);
         $pdu->setData(null);
         $pdu->setEvent(Request::HEARTBEAT_EVENT);

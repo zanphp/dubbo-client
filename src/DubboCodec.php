@@ -10,7 +10,6 @@ use ZanPHP\Dubbo\Exception\DubboCodecException;
 class DubboCodec implements Codec
 {
     const NAME = "dubbo";
-    const DUBBO_VERSION = "2.0.0";
     const HEADER_LENGTH = 16;
 
     // magic header. int16_t
@@ -67,16 +66,16 @@ class DubboCodec implements Codec
         }
     }
 
-    private function getSerialization($id = null)
+    protected function getSerialization($id = null)
     {
         $id = Hessian2Serialization::ID; // FIXME
         return CodecSupport::getSerializationById($id);
     }
 
-    private function decodeRequest(Input $in, $id, $flag)
+    protected function decodeRequest(Input $in, $id, $flag)
     {
         $req = new Request($id);
-        $req->setVersion(self::DUBBO_VERSION);
+        $req->setVersion(Constants::DUBBO_VERSION);
         $req->setTwoWay(($flag & self::FLAG_TWOWAY) != 0);
         if (($flag & self::FLAG_EVENT) != 0) {
             $req->setEvent(Request::HEARTBEAT_EVENT);
@@ -97,7 +96,7 @@ class DubboCodec implements Codec
         return $req;
     }
 
-    private function decodeResponse(Input $in, $id, $flag, $status, $ctx)
+    protected function decodeResponse(Input $in, $id, $flag, $status, $ctx)
     {
         $res = new Response($id);
         if ($flag & self::FLAG_EVENT) {
@@ -126,7 +125,7 @@ class DubboCodec implements Codec
         }
     }
 
-    private function decodeEvent(Input $in)
+    protected function decodeEvent(Input $in)
     {
         try {
             return $in->readObject();
@@ -138,7 +137,7 @@ class DubboCodec implements Codec
         return null;
     }
 
-    private function encodeRequest(Request $req)
+    protected function encodeRequest(Request $req)
     {
         $serialization = $this->getSerialization();
 
@@ -165,7 +164,7 @@ class DubboCodec implements Codec
         return $header . $body;
     }
 
-    private function encodeResponse(Response $res)
+    protected function encodeResponse(Response $res)
     {
         $serialization = $this->getSerialization();
 
@@ -195,47 +194,41 @@ class DubboCodec implements Codec
         return $header . $body;
     }
 
-    private function encodeRequestData(Output $out, RpcInvocation $inv)
+    protected function encodeRequestData(Output $out, RpcInvocation $inv)
     {
         $buf = "";
-        $buf .= $out->writeString($inv->getVersion() ?: static::DUBBO_VERSION);
+        $buf .= $out->writeString($inv->getVersion() ?: Constants::DUBBO_VERSION);
         $buf .= $out->writeString($inv->getServiceName());
         $buf .= $out->writeString($inv->getMethodVersion());
         $buf .= $out->writeString($inv->getMethodName());
-
-        // FIXME ?!
+//        FIXME ?!
 //        if (substr(self::DUBBO_VERSION, 0, 3) === "2.8") {
 //            $buf .= $out->write(-1);
 //        }
-
         $buf .= $out->writeString(JavaType::types2desc($inv->getParameterTypes()));
+
         $args = $inv->getArguments();
-        $paraTypes = $inv->getParameterTypes();
         foreach ($args as $i => $arg) {
-            if ($arg instanceof JavaValue) {
-                $arg = RpcInvocation::encodeInvocationArgument($inv, $paraTypes[$i], $arg);
-                $buf .= $out->writeObject($arg, $paraTypes[$i]);
-            } else {
-                throw new \InvalidArgumentException();
-            }
+            $buf .= $out->writeJavaValue($arg);
         }
-        $buf .= $out->writeObject(new JavaValue(JavaType::$T_Map, $inv->getAttachments() ?: []));
+
+        $buf .= $out->writeJavaValue(new JavaValue(JavaType::$T_Map, $inv->getAttachments() ?: []));
         return $buf;
     }
 
-    private function encodeResponseData(Output $out, Result $result)
+    protected function encodeResponseData(Output $out, Result $result)
     {
         $buf = "";
         if ($ex = $result->getException()) {
             $buf .= $out->writeByte(self::RESPONSE_WITH_EXCEPTION);
-            $buf .= $out->writeObject($ex);
+            $buf .= $out->writeJavaValue($ex);
         } else {
             $ret = $result->getValue();
             if ($ret === null) {
                 $buf .= $out->writeByte(self::RESPONSE_NULL_VALUE);
             } else {
                 $buf .= $out->writeByte(self::RESPONSE_VALUE);
-                $buf .= $out->writeObject($ret);
+                $buf .= $out->writeJavaValue($ret);
             }
         }
         return $buf;

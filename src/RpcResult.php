@@ -20,7 +20,6 @@ class RpcResult implements Result
     public function setValue($value)
     {
         $this->value = $value;
-        return $this;
     }
 
     public function getException()
@@ -50,14 +49,14 @@ class RpcResult implements Result
         $flag = $in->read(); // readInt
         switch ($flag) {
             case DubboCodec::RESPONSE_NULL_VALUE:
-                $self->setValue(null);
+                $self->value = null;
                 break;
             case DubboCodec::RESPONSE_VALUE:
                 if ($expect instanceof JavaType) {
                     $unserialize = $expect->getUnserialize();
-                    $self->setValue($unserialize($in));
+                    $self->value = $unserialize($in);
                 } else {
-                    $self->setValue($in->read()); // readAll ?
+                    $self->value = $in->read(); // readAll ?
                 }
                 break;
             case DubboCodec::RESPONSE_WITH_EXCEPTION:
@@ -65,7 +64,7 @@ class RpcResult implements Result
                 if (!($ex instanceof \Throwable) && !($ex instanceof \Exception)) {
                     $ex = new JavaException($ex);
                 }
-                $self->setException($ex);
+                $self->value = $ex;
                 break;
             default:
                 throw new DubboCodecException("Unknown result flag, expect '0' '1' '2', get $flag");
