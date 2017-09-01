@@ -145,16 +145,18 @@ class DubboClient implements Async, Heartbeatable
     public function genericCallEx($method, array $arguments, $timeout = self::DEFAULT_SEND_TIMEOUT)
     {
         $types = [];
+        $args = [];
         foreach ($arguments as $argument) {
             if (!($argument instanceof JavaValue)) {
                 throw new InvalidArgumentException();
             }
             $types[] = $argument->getType()->getName();
+            $args[] = $argument->getValue();
         }
 
         $method = new JavaValue(JavaType::$T_String, $method);
         $types = new JavaValue(JavaType::$T_Strings, $types);
-        $args = new JavaValue(JavaType::$T_Objects, $arguments);
+        $args = new JavaValue(JavaType::$T_Objects, $args);
 
         yield setRpcContext("interface", $this->serviceName);
         yield setRpcContext("generic", "true");
