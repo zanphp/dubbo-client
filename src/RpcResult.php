@@ -79,7 +79,7 @@ class RpcResult implements Result
                 if (!($ex instanceof \Throwable) && !($ex instanceof \Exception)) {
                     $ex = new JavaException($ex);
                 }
-                $self->value = $ex;
+                $self->exception = $ex;
                 break;
             default:
                 throw new DubboCodecException("Unknown result flag, expect '0' '1' '2', get $flag");
