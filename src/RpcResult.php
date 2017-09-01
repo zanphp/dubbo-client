@@ -10,6 +10,8 @@ class RpcResult implements Result
 {
     private $value;
     private $exception;
+    /** @var  JavaType */
+    private $type;
     private $attachments;
 
     public function getValue()
@@ -30,6 +32,19 @@ class RpcResult implements Result
     public function setException($exception)
     {
         $this->exception = $exception;
+    }
+
+    public function getType()
+    {
+        if ($this->type === null) {
+            $this->type = JavaType::$T_Unknown;
+        }
+        return $this->type;
+    }
+
+    public function setType(JavaType $type)
+    {
+        $this->type = $type;
     }
 
     public function getAttachments()

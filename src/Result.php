@@ -9,5 +9,10 @@ interface Result
 
     public function getException();
 
+    /**
+     * @return JavaType
+     */
+    public function getType();
+
     public function getAttachments();
 }

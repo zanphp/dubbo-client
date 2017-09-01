@@ -165,6 +165,28 @@ class DubboCodec implements Codec
         return $header . $body;
     }
 
+    protected function encodeRequestData(Output $out, RpcInvocation $inv)
+    {
+        $buf = "";
+        $buf .= $out->writeString($inv->getVersion() ?: Constants::DUBBO_VERSION);
+        $buf .= $out->writeString($inv->getServiceName());
+        $buf .= $out->writeString($inv->getMethodVersion());
+        $buf .= $out->writeString($inv->getMethodName());
+//        FIXME ?!
+//        if (substr(self::DUBBO_VERSION, 0, 3) === "2.8") {
+//            $buf .= $out->write(-1);
+//        }
+        $buf .= $out->writeString(JavaType::types2desc($inv->getParameterTypes()));
+
+        $args = $inv->getArguments();
+        foreach ($args as $i => $arg) {
+            $buf .= $out->writeJavaValue($arg);
+        }
+
+        $buf .= $out->writeJavaValue(new JavaValue(JavaType::$T_Map, $inv->getAttachments() ?: []));
+        return $buf;
+    }
+
     protected function encodeResponse(Response $res)
     {
         $serialization = $this->getSerialization();
@@ -195,41 +217,21 @@ class DubboCodec implements Codec
         return $header . $body;
     }
 
-    protected function encodeRequestData(Output $out, RpcInvocation $inv)
-    {
-        $buf = "";
-        $buf .= $out->writeString($inv->getVersion() ?: Constants::DUBBO_VERSION);
-        $buf .= $out->writeString($inv->getServiceName());
-        $buf .= $out->writeString($inv->getMethodVersion());
-        $buf .= $out->writeString($inv->getMethodName());
-//        FIXME ?!
-//        if (substr(self::DUBBO_VERSION, 0, 3) === "2.8") {
-//            $buf .= $out->write(-1);
-//        }
-        $buf .= $out->writeString(JavaType::types2desc($inv->getParameterTypes()));
-
-        $args = $inv->getArguments();
-        foreach ($args as $i => $arg) {
-            $buf .= $out->writeJavaValue($arg);
-        }
-
-        $buf .= $out->writeJavaValue(new JavaValue(JavaType::$T_Map, $inv->getAttachments() ?: []));
-        return $buf;
-    }
-
     protected function encodeResponseData(Output $out, Result $result)
     {
         $buf = "";
         if ($ex = $result->getException()) {
             $buf .= $out->writeByte(self::RESPONSE_WITH_EXCEPTION);
-            $buf .= $out->writeJavaValue($ex);
+            $serialize = $result->getType()->getSerialize();
+            $buf .= $serialize($ex);
         } else {
             $ret = $result->getValue();
             if ($ret === null) {
                 $buf .= $out->writeByte(self::RESPONSE_NULL_VALUE);
             } else {
                 $buf .= $out->writeByte(self::RESPONSE_VALUE);
-                $buf .= $out->writeJavaValue($ret);
+                $serialize = $result->getType()->getSerialize();
+                $buf .= $serialize($ret);
             }
         }
         return $buf;

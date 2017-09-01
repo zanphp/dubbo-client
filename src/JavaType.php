@@ -512,6 +512,7 @@ class JavaType
     }
 
     // -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+    public static $T_Unknown;
 
     public static $T_void;
     public static $T_Boolean;
@@ -546,6 +547,7 @@ class JavaType
     public static $T_Objects;
 }
 
+JavaType::$T_Unknown = new JavaType();
 
 JavaType::$T_void = JavaType::createPrimitive('void', JavaType::JVM_VOID);
 JavaType::$T_boolean = JavaType::createPrimitive('boolean', JavaType::JVM_BOOLEAN);
