@@ -57,7 +57,7 @@ class RpcResult implements Result
                     $unserialize = $expect->getUnserialize();
                     $self->setValue($unserialize($in));
                 } else {
-                    $self->setValue($in->readAll());
+                    $self->setValue($in->read()); // readAll ?
                 }
                 break;
             case DubboCodec::RESPONSE_WITH_EXCEPTION:
