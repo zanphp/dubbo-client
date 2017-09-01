@@ -45,8 +45,6 @@ class DubboCodec implements Codec
 
     public function decode($bin, $ctx = null)
     {
-        $serialization = $this->getSerialization();
-
         $hdr = unpack('nmagic/Cflag/Cstatus/JreqId/NbodySz', $bin);
         $magic = $hdr["magic"];
         $flag = $hdr["flag"];
@@ -55,20 +53,23 @@ class DubboCodec implements Codec
         $bodySize = $hdr["bodySz"];
 
         if ($magic !== self::MAGIC) {
-            throw new DubboCodecException();
+            sys_error("Invalid Dubbo Magic: " . bin2hex($bin));
+            return null;
         }
 
+        $proto = $flag & self::SERIALIZATION_MASK;
+        $serialization = $this->getSerialization($proto);
         $in = $serialization->deserialize(substr($bin, self::HEADER_LENGTH));
-        if (($flag & self::FLAG_REQUEST) == 0) {
+
+        if (($flag & self::FLAG_REQUEST) === 0) {
             return $this->decodeResponse($in, $reqId, $flag, $status, $ctx);
         } else {
             return $this->decodeRequest($in, $reqId, $flag);
         }
     }
 
-    protected function getSerialization($id = null)
+    protected function getSerialization($id = Hessian2Serialization::ID)
     {
-        $id = Hessian2Serialization::ID; // FIXME
         return CodecSupport::getSerializationById($id);
     }
 

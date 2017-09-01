@@ -2,6 +2,7 @@
 
 namespace ZanPHP\Dubbo;
 
+use ZanPHP\Contracts\Codec\Codec;
 use ZanPHP\Coroutine\Task;
 
 class ClientContext
@@ -12,13 +13,14 @@ class ClientContext
     private $cb;
     private $task;
     private $startTime;//us
+    private $arguments;
+    private $returnType;
+
     private $traceHandle;
     private $debuggerTraceTid;
     private $trace;
     private $debuggerTrace;
     private $hawk;
-    private $arguments;
-    private $returnType;
 
 
     /**
