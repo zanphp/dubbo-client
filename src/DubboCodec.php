@@ -44,20 +44,24 @@ class DubboCodec implements Codec
         }
     }
 
-    public function decode($bin)
+    public function decode($bin, $ctx = null)
     {
         $serialization = $this->getSerialization();
 
         $hdr = unpack('nmagic/Cflag/Cstatus/JreqId/NbodySz', $bin);
-        $magic = $hdr["magic"]; // FIXME
+        $magic = $hdr["magic"];
         $flag = $hdr["flag"];
         $status = $hdr["status"];
         $reqId = $hdr["reqId"];
-        $bodySize = $hdr["bodySz"]; // FIXME
+        $bodySize = $hdr["bodySz"];
+
+        if ($magic !== self::MAGIC) {
+            throw new DubboCodecException();
+        }
 
         $in = $serialization->deserialize(substr($bin, self::HEADER_LENGTH));
         if (($flag & self::FLAG_REQUEST) == 0) {
-            return $this->decodeResponse($in, $reqId, $flag, $status);
+            return $this->decodeResponse($in, $reqId, $flag, $status, $ctx);
         } else {
             return $this->decodeRequest($in, $reqId, $flag);
         }
@@ -79,7 +83,7 @@ class DubboCodec implements Codec
         }
         try {
             if ($req->isHeartbeat() || $req->isEvent()) {
-               $data = $this->decodeEvent($in);
+                $data = $this->decodeEvent($in);
             } else {
                 $data = RpcInvocation::decode($in);
             }
@@ -93,7 +97,7 @@ class DubboCodec implements Codec
         return $req;
     }
 
-    private function decodeResponse(Input $in, $id, $flag, $status)
+    private function decodeResponse(Input $in, $id, $flag, $status, $ctx)
     {
         $res = new Response($id);
         if ($flag & self::FLAG_EVENT) {
@@ -105,7 +109,8 @@ class DubboCodec implements Codec
                 if ($res->isHeartbeat() || $res->isEvent()) {
                     $data = $this->decodeEvent($in);
                 } else {
-                    $data = RpcResult::decode($in);
+                    $expect = is_callable($ctx) ? $ctx($id) : null;
+                    $data = RpcResult::decode($in, $expect);
                 }
                 $res->setResult($data);
                 return $res;

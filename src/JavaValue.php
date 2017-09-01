@@ -51,14 +51,9 @@ class JavaValue
         $this->value = $this->type->valid($value);
     }
 
-    // FIXME dubbo/hessian-lite/src/main/java/com/alibaba/com/caucho/hessian/io/SerializerFactory.java
     public function serialize()
     {
-        $serialization = $this->type->getSerialization();
-        if (!$serialization) {
-            $serialization = CodecSupport::getJavaTypeDefaultSerialization($this->type);
-            $this->type->setSerialization($serialization);
-        }
-        return $serialization($this->value);
+        $serialize = $this->type->getSerialize();
+        return $serialize($this->value);
     }
 }

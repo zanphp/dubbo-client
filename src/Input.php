@@ -5,19 +5,15 @@ namespace ZanPHP\Dubbo;
 
 interface Input
 {
-    public function read();
+    public function read($expect = null);
 
     public function readBool();
 
     public function readByte();
 
-    public function readShort();
-
     public function readInt();
 
     public function readLong();
-
-    public function readFloat();
 
     public function readDouble();
 

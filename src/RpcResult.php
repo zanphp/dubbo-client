@@ -44,18 +44,21 @@ class RpcResult implements Result
         return $this;
     }
 
-    // FIXME 读取并 SET Attachments
-    public static function decode(Input $in)
+    public static function decode(Input $in, $expect)
     {
         $self = new static();
-        $flag = $in->read(); // !!!!!
+        $flag = $in->read(); // readInt
         switch ($flag) {
             case DubboCodec::RESPONSE_NULL_VALUE:
                 $self->setValue(null);
                 break;
             case DubboCodec::RESPONSE_VALUE:
-                // FIXME 按照请求预期返回值类型读取, 暂时读取所有
-                $self->setValue($in->readAll());
+                if ($expect instanceof JavaType) {
+                    $unserialize = $expect->getUnserialize();
+                    $self->setValue($unserialize($in));
+                } else {
+                    $self->setValue($in->readAll());
+                }
                 break;
             case DubboCodec::RESPONSE_WITH_EXCEPTION:
                 $ex = $in->readObject();

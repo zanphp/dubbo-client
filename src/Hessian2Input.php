@@ -4,6 +4,7 @@ namespace ZanPHP\Dubbo;
 
 
 use ZanPHP\HessianLite\Factory;
+use ZanPHP\HessianLite\RuleResolver;
 use ZanPHP\HessianLite\StreamEOF;
 
 class Hessian2Input implements Input
@@ -15,9 +16,9 @@ class Hessian2Input implements Input
         $this->parser = Factory::getParser($bin);
     }
 
-    public function read()
+    public function read($expect = null)
     {
-        return $this->parser->parseCheck();
+        return $this->parser->parseCheck(null, $expect);
     }
 
     public function readBool()
@@ -31,43 +32,34 @@ class Hessian2Input implements Input
         return $this->parser->readNum(1);
     }
 
-    public function readShort()
-    {
-        return $this->parser->parseCheck(null, "integer");
-    }
-
     public function readInt()
     {
-        return $this->parser->parseCheck(null, "integer");
+        return $this->parser->parseCheck(null, RuleResolver::T_INTEGER);
     }
 
     public function readLong()
     {
-        return $this->parser->parseCheck(null, "long");
-    }
-
-    public function readFloat()
-    {
-        return $this->parser->parseCheck(null, "double");
+        return $this->parser->parseCheck(null, RuleResolver::T_LONG);
     }
 
     public function readDouble()
     {
-        return $this->parser->parseCheck(null, "double");
+        return $this->parser->parseCheck(null, RuleResolver::T_DOUBLE);
     }
 
     public function readString()
     {
-        return $this->parser->parseCheck(null, "string");
+        return $this->parser->parseCheck(null, RuleResolver::T_STRING);
     }
 
     public function readBytes()
     {
-        return $this->parser->parseCheck(null, "binary");
+        return $this->parser->parseCheck(null, RuleResolver::T_BINARY);
     }
 
     public function readObject(JavaType $type = null)
     {
+        // FIXME
         return $this->parser->parseCheck(null, "object,list,map,null");
     }
 

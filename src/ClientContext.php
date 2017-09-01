@@ -18,6 +18,7 @@ class ClientContext
     private $debuggerTrace;
     private $hawk;
     private $arguments;
+    private $returnType;
 
 
     /**
@@ -141,5 +142,15 @@ class ClientContext
     public function setArguments($arguments)
     {
         $this->arguments = $arguments;
+    }
+
+    public function getReturnType()
+    {
+        return $this->returnType;
+    }
+
+    public function setReturnType($returnType)
+    {
+        $this->returnType = $returnType;
     }
 }

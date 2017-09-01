@@ -75,7 +75,12 @@ class JavaType
      * 注册到类型的序列化函数, 用来序列化该类型value
      * @var callable
      */
-    private $serialization;
+    private $serialize;
+
+    /**
+     * @var callable
+     */
+    private $unserialize;
 
     public function isArray()
     {
@@ -102,11 +107,6 @@ class JavaType
         return $this->desc;
     }
 
-    public function getSerialization()
-    {
-        return $this->serialization;
-    }
-
     public function valid($value)
     {
         $valid = $this->valid;
@@ -121,9 +121,31 @@ class JavaType
         $this->valid = $valid;
     }
 
-    public function setSerialization(callable $serialization)
+    public function getSerialize()
     {
-        $this->serialization = $serialization;
+        if (!$this->serialize) {
+            $this->serialize = CodecSupport::getJavaTypeDefaultSerialize($this);
+        }
+
+        return $this->serialize;
+    }
+
+    public function setSerialize(callable $serialize)
+    {
+        $this->serialize = $serialize;
+    }
+
+    public function getUnserialize()
+    {
+        if (!$this->unserialize) {
+            $this->unserialize = CodecSupport::getJavaTypeDefaultUnSerialize($this);
+        }
+        return $this->unserialize;
+    }
+
+    public function setUnserialize(callable $unserialize)
+    {
+        $this->unserialize = $unserialize;
     }
 
     public function __toString()

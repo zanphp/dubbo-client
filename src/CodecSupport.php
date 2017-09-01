@@ -5,7 +5,9 @@ namespace ZanPHP\Dubbo;
 
 use ZanPHP\Dubbo\Exception\DubboCodecException;
 use ZanPHP\HessianLite\Factory;
+use ZanPHP\HessianLite\RuleResolver;
 
+// FIXME dubbo/hessian-lite/src/main/java/com/alibaba/com/caucho/hessian/io/SerializerFactory.java
 class CodecSupport
 {
     /**
@@ -26,173 +28,158 @@ class CodecSupport
         self::$ID_SERIALIZATION_MAP[$serialization->getContentTypeId()] = $serialization;
     }
 
-    // FIXME 这里实现有问题
-    // map list ... 如何序列化，包装类型如何序列化
-    public static function getJavaTypeDefaultSerialization(JavaType $type)
+    // FIXME TEST
+    public static function getJavaTypeDefaultUnSerialize(JavaType $type)
     {
-        $serialization = null;
+        $unserialize = null;
         switch($type) {
             case JavaType::$T_void:
-                $serialization = function($v) {
-                    return "";
-                };
+                $unserialize = function($v) { return ""; };
                 break;
+
             case JavaType::$T_Boolean:
-                $serialization = function($v) {
-                    $writer = Factory::getWriter();
-                    return $writer->writeBool($v);
-                };
-                break;
             case JavaType::$T_boolean:
-                $serialization = function($v) {
-                    $writer = Factory::getWriter();
-                    return $writer->writeBool($v);
-                };
+                $unserialize = function(Input $in) { return $in->readBool(); };
                 break;
-            case JavaType::$T_Integer:
-                $serialization = function($v) {
-                    $writer = Factory::getWriter();
-                    return $writer->writeInt($v);
-                };
-                break;
-            case JavaType::$T_int:
-                $serialization = function($v) {
-                    $writer = Factory::getWriter();
-                    return $writer->writeInt($v);
-                };
-                break;
-            case JavaType::$T_short:
-                $serialization = function($v) {
-                    $writer = Factory::getWriter();
-                    return $writer->writeInt($v);
-                };
-                break;
-            case JavaType::$T_Short:
-                $serialization = function($v) {
-                    $writer = Factory::getWriter();
-                    return $writer->writeInt($v);
-                };
-                break;
+
             case JavaType::$T_byte:
-                $serialization = function($v) {
-                    $writer = Factory::getWriter();
-                    return $writer->writeString($v);
-                };
-                break;
             case JavaType::$T_Byte:
-                $serialization = function($v) {
-                    $writer = Factory::getWriter();
-                    return $writer->writeString($v);
-                };
+                $unserialize = function(Input $in) { return $in->readByte(); };
                 break;
+
+            case JavaType::$T_short:
+            case JavaType::$T_Short:
+            case JavaType::$T_Integer:
+            case JavaType::$T_int:
+                $unserialize = function(Input $in) { return $in->readInt(); };
+                break;
+
             case JavaType::$T_long:
-                $serialization = function($v) {
-                    $writer = Factory::getWriter();
-                    return $writer->writeInt($v);
-                };
-                break;
             case JavaType::$T_Long:
-                $serialization = function($v) {
-                    $writer = Factory::getWriter();
-                    return $writer->writeInt($v);
-                };
+                $unserialize = function(Input $in) { return $in->readLong(); };
                 break;
-            case JavaType::$T_double:
-                $serialization = function($v) {
-                    $writer = Factory::getWriter();
-                    return $writer->writeDouble($v);
-                };
-                break;
-            case JavaType::$T_Double:
-                $serialization = function($v) {
-                    $writer = Factory::getWriter();
-                    return $writer->writeDouble($v);
-                };
-                break;
+
             case JavaType::$T_float:
-                $serialization = function($v) {
-                    $writer = Factory::getWriter();
-                    return $writer->writeDouble($v);
-                };
-                break;
             case JavaType::$T_Float:
-                $serialization = function($v) {
-                    $writer = Factory::getWriter();
-                    return $writer->writeDouble($v);
-                };
+            case JavaType::$T_double:
+            case JavaType::$T_Double:
+                $unserialize = function(Input $in) { return $in->readDouble(); };
                 break;
-            case JavaType::$T_String:
-                $serialization = function($v) {
-                    $writer = Factory::getWriter();
-                    return $writer->writeString($v);
-                };
-                break;
+
             case JavaType::$T_char:
-                $serialization = function($v) {
-                    $writer = Factory::getWriter();
-                    return $writer->writeString($v);
-                };
-                break;
-            case JavaType::$T_chars:
-                $serialization = function($v) {
-                    $writer = Factory::getWriter();
-                    return $writer->writeArray($v);
-                };
-                break;
             case JavaType::$T_Character:
-                $serialization = function($v) {
-                    $writer = Factory::getWriter();
-                    return $writer->writeString($v);
-                };
+            case JavaType::$T_String:
+                $unserialize = function(Input $in) { return $in->readString(); };
                 break;
+
+            case JavaType::$T_chars:
+                $unserialize = function(Input $in) { return $in->read(RuleResolver::T_BINARY); };
+                break;
+
+            case JavaType::$T_Strings:
             case JavaType::$T_List:
-                $serialization = function($v) {
-                    $writer = Factory::getWriter();
-                    return $writer->writeArray($v);
-                };
-                break;
             case JavaType::$T_Set:
-                $serialization = function($v) {
-                    $writer = Factory::getWriter();
-                    return $writer->writeArray($v);
-                };
+                $unserialize = function(Input $in) { return $in->read(RuleResolver::T_LST); };
                 break;
-            case JavaType::$T_Iterator:
-                $serialization = function($v) {
-                    $writer = Factory::getWriter();
-                    return $writer->writeObject($v);
-                };
-                break;
-            case JavaType::$T_Enumeration:
-                $serialization = function($v) {
-                    $writer = Factory::getWriter();
-                    return $writer->writeObject($v);
-                };
-                break;
+
             case JavaType::$T_HashMap:
-                $serialization = function($v) {
-                    $writer = Factory::getWriter();
-                    return $writer->writeMap($v);
-                };
-                break;
             case JavaType::$T_Map:
-                $serialization = function($v) {
-                    $writer = Factory::getWriter();
-                    return $writer->writeMap($v);
-                };
-                break;
             case JavaType::$T_Dictionary:
-                $serialization = function($v) {
-                    $writer = Factory::getWriter();
-                    return $writer->writeMap($v);
-                };
+                $unserialize = function(Input $in) { return $in->read(RuleResolver::T_MAP); };
                 break;
+
+            case JavaType::$T_Iterator:
+            case JavaType::$T_Enumeration:
+            case JavaType::$T_Object:
             default:
-                $serialization = function($v) {
-                    $writer = Factory::getWriter();
-                    return $writer->writeValue($v);
-                };
+                if ($type->isArray()) {
+                    $unserialize = function(Input $in) { return $in->read(RuleResolver::T_LST); };
+                } else if (!$type->isPrimitive()) {
+                    $unserialize = function(Input $in) { return $in->readObject(); };
+                } else {
+                    $unserialize = function(Input $in) { return $in->read(); }; // readAll() ??
+                }
         }
-        return $serialization;
+        return $unserialize;
+    }
+
+    // FIXME TEST
+    // byte string ? int ?
+    public static function getJavaTypeDefaultSerialize(JavaType $type)
+    {
+        $serialize = null;
+
+        switch($type) {
+            case JavaType::$T_void:
+                $serialize = function($v) { return ""; };
+                break;
+
+            case JavaType::$T_Boolean:
+            case JavaType::$T_boolean:
+                $serialize = function($v) { return Factory::getWriter()->writeBool($v); };
+                break;
+
+            case JavaType::$T_byte:
+            case JavaType::$T_Byte:
+            case JavaType::$T_Integer:
+            case JavaType::$T_int:
+            case JavaType::$T_short:
+            case JavaType::$T_Short:
+                $serialize = function($v) { return Factory::getWriter()->writeInt($v); };
+                break;
+
+            // FIXME writeLong
+            case JavaType::$T_long:
+            case JavaType::$T_Long:
+                $serialize = function($v) { return Factory::getWriter()->writeInt($v); };
+                break;
+
+            case JavaType::$T_char:
+            case JavaType::$T_Character:
+            case JavaType::$T_String:
+                $serialize = function($v) { return Factory::getWriter()->writeString($v); };
+                break;
+
+            case JavaType::$T_double:
+            case JavaType::$T_Double:
+            case JavaType::$T_float:
+            case JavaType::$T_Float:
+                $serialize = function($v) { return Factory::getWriter()->writeDouble($v); };
+                break;
+
+            case JavaType::$T_HashMap:
+            case JavaType::$T_Map:
+            case JavaType::$T_Dictionary:
+                $serialize = function($v) { return Factory::getWriter()->writeMap($v); };
+                break;
+
+            case JavaType::$T_Strings:
+            case JavaType::$T_List:
+            case JavaType::$T_Set:
+                $serialize = function($v) { return Factory::getWriter()->writeArray($v); };
+                break;
+
+
+            case JavaType::$T_chars:
+                $serialize = function($v) { return Factory::getWriter()->writeBinary($v); };
+                break;
+
+            case JavaType::$T_Object:
+                $serialize = function($v) { return Factory::getWriter()->writeObject($v); };
+                break;
+
+            case JavaType::$T_Iterator:
+            case JavaType::$T_Enumeration:
+            default:
+                if ($type->isArray()) {
+                    $serialize = function($v) { return Factory::getWriter()->writeArray($v); };
+                } else if (!$type->isPrimitive()) {
+                    $serialize = function($v) { return Factory::getWriter()->writeObject($v); };
+                } else {
+                    $serialize = function($v) { return Factory::getWriter()->writeValue($v); };
+                }
+        }
+
+        return $serialize;
     }
 }

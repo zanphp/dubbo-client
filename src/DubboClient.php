@@ -47,6 +47,9 @@ class DubboClient implements Async, Heartbeatable
 
     private $serverAddr;
 
+    /**
+     * @var ClientContext[]
+     */
     private static $reqMap = [];
 
     private static $instance = null;
@@ -120,7 +123,7 @@ class DubboClient implements Async, Heartbeatable
 
         yield setRpcContext("interface", $this->serviceName);
         yield setRpcContext("generic", "true");
-        yield $this->call(self::GENERIC_METHOD, [$method, $types, $args], $timeout);
+        yield $this->call(self::GENERIC_METHOD, [$method, $types, $args], null, $timeout);
     }
 
     /**
@@ -160,19 +163,20 @@ class DubboClient implements Async, Heartbeatable
 
         yield setRpcContext("interface", $this->serviceName);
         yield setRpcContext("generic", "true");
-        yield $this->call(self::GENERIC_METHOD, [$method, $types, $args], $timeout);
+        yield $this->call(self::GENERIC_METHOD, [$method, $types, $args], null, $timeout);
     }
 
     /**
      * @param string $method
      * @param JavaValue[] $arguments
+     * @param JavaType|null $returnType
      * @param int $timeout
      * @return \Generator
      * @throws DubboCodecException
      * @throws InvalidArgumentException
-     * @throws \Throwable
+     * @throws \Throwable attachment 通过 RpcContext 传递
      */
-    public function call($method, array $arguments, $timeout = self::DEFAULT_SEND_TIMEOUT)
+    public function call($method, array $arguments, JavaType $returnType = null, $timeout = self::DEFAULT_SEND_TIMEOUT)
     {
         $parameterTypes = [];
         foreach ($arguments as $argument) {
@@ -189,6 +193,7 @@ class DubboClient implements Async, Heartbeatable
         $context->setArguments($arguments);
         $context->setReqServiceName($this->serviceName);
         $context->setReqMethodName($method);
+        $context->setReturnType($returnType);
         $context->setReqSeqNo($seq);
         $context->setStartTime();
         $context->setHawk(make(Hawk::class));
@@ -254,7 +259,10 @@ class DubboClient implements Async, Heartbeatable
         /** @var Codec $codec */
         /** @var Response $resp */
         $codec = new DubboCodec();
-        $resp = $codec->decode($data);
+        $resp = $codec->decode($data, function($reqId) {
+            $context = isset(self::$reqMap[$reqId]) ? self::$reqMap[$reqId] : null;
+            return $context ? $context->getReturnType() : null;
+        });
 
         // dubbo 是双向心跳
         if ($resp instanceof Request) {
