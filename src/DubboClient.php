@@ -73,7 +73,7 @@ class DubboClient implements Async, Heartbeatable
     {
         $key = spl_object_hash($conn) . '_' . $serviceName;
         if (!isset(static::$instance[$key]) || null === static::$instance[$key]) {
-            static::$instance[$key] = new static($conn, $serviceName, $codec ?: new DubboCodec());
+            static::$instance[$key] = new static($conn, $serviceName, $codec);
             if (self::$sendTimeout === null) {
                 /** @var Repository $repository */
                 $repository = make(Repository::class);
@@ -85,7 +85,7 @@ class DubboClient implements Async, Heartbeatable
         return static::$instance[$key];
     }
 
-    public function __construct(Connection $conn, $serviceName, Codec $codec)
+    public function __construct(Connection $conn, $serviceName, Codec $codec = null)
     {
         $this->serviceName = $serviceName;
         $this->dubboConnection = $conn;
@@ -94,7 +94,7 @@ class DubboClient implements Async, Heartbeatable
 
         $sockInfo = $this->swooleClient->getsockname();
         $this->serverAddr = ip2long($sockInfo["host"]) . ':' . $sockInfo["port"];
-        $this->codec = $codec;
+        $this->codec = $codec ?: new DubboCodec();
     }
 
     public function execute(callable $callback, $task)
