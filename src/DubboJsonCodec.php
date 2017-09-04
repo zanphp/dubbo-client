@@ -5,13 +5,15 @@ namespace ZanPHP\Dubbo;
 
 use ZanPHP\Support\Json;
 
+/**
+ * Class DubboJsonCodec
+ * @package ZanPHP\Dubbo
+ *
+ * 处理新加入的Json序列化泛化调用方式
+ * String $invoke(String method, String[] parameterTypes, String jsonString) throws GenericException;
+ */
 class DubboJsonCodec extends DubboCodec
 {
-    protected function decodeRequest(Input $in, $id, $flag)
-    {
-        // FIXME
-    }
-
     protected function encodeRequestData(Output $out, RpcInvocation $inv)
     {
         $buf = "";
@@ -20,20 +22,29 @@ class DubboJsonCodec extends DubboCodec
         $buf .= $out->writeString($inv->getMethodVersion());
         $buf .= $out->writeString($inv->getMethodName());
 
-//        FIXME ?!
-//        if (substr(self::DUBBO_VERSION, 0, 3) === "2.8") {
-//            $buf .= $out->write(-1);
-//        }
-
         $buf .= $out->writeString(JavaType::types2desc($inv->getParameterTypes()));
 
         $args = [];
         foreach ($inv->getArguments() as $i => $arg) {
-            $args[] = $arg->getValue();
+            // jsonString 需要map, 且按照约定 arg0, arg1, ...
+            $args["arg$i"] = $arg->getValue();
         }
-        $buf .= Json::encode($args);
 
-        $buf .= Json::encode($inv->getAttachments() ?: []);
+        if (empty($args)) {
+            $args = "{}";
+        } else {
+            $args = Json::encode($args);
+        }
+        $buf .= $out->writeString($args);
+
+        $attach = $inv->getAttachments();
+        if (empty($attach)) {
+            $attach = "{}";
+        } else {
+            $attach = Json::encode($attach ?: []);
+        }
+        $buf .= $out->writeString($attach);
+
         return $buf;
     }
 }

@@ -26,6 +26,10 @@ class DubboClient implements Async, Heartbeatable
 {
     const DEFAULT_SEND_TIMEOUT = 3000;
 
+    /**
+     * Object $invoke(String method, String[] parameterTypes, Object[] args) throws GenericException;
+     * String $invoke(String method, String[] parameterTypes, String jsonString) throws GenericException;
+     */
     const GENERIC_METHOD = '$invoke';
 
     /**
