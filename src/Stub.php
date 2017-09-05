@@ -10,7 +10,7 @@ use ZanPHP\NovaConnectionPool\Exception\NoFreeConnectionException;
 
 class Stub
 {
-    protected static $__type = "";
+    protected static $__service = "";
     protected static $__methods = [];
 
     final public function __genericCall($method, ...$args)
@@ -25,7 +25,7 @@ class Stub
             throw new NoFreeConnectionException("get dubbo connection error");
         }
 
-        $dubboClient = new DubboClient($connection, static::$__type, $codec);
+        $dubboClient = new DubboClient($connection, static::$__service, $codec);
         yield $dubboClient->genericCall($method, $args);
     }
 
@@ -48,7 +48,7 @@ class Stub
             throw new NoFreeConnectionException("get dubbo connection error");
         }
 
-        $dubboClient = new DubboClient($connection, static::$__type, $codec);
+        $dubboClient = new DubboClient($connection, static::$__service, $codec);
         yield $dubboClient->genericCallEx($method, $args);
     }
 }
