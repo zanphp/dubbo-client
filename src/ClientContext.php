@@ -15,6 +15,7 @@ class ClientContext
     private $startTime;//us
     private $arguments;
     private $returnType;
+    private $codec;
 
     private $traceHandle;
     private $debuggerTraceTid;
@@ -154,5 +155,15 @@ class ClientContext
     public function setReturnType($returnType)
     {
         $this->returnType = $returnType;
+    }
+
+    public function getCodec()
+    {
+        return $this->codec;
+    }
+
+    public function setCodec($codec)
+    {
+        $this->codec = $codec;
     }
 }

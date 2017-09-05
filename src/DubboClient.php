@@ -54,7 +54,7 @@ class DubboClient implements Async, Heartbeatable
     /**
      * @var Codec
      */
-    private $codec;
+    private $defaultCodec;
 
     /**
      * @var ClientContext[]
@@ -89,7 +89,7 @@ class DubboClient implements Async, Heartbeatable
         return static::$instance[$key];
     }
 
-    public function __construct(Connection $conn, $serviceName, Codec $codec = null)
+    public function __construct(Connection $conn, $serviceName)
     {
         $this->serviceName = $serviceName;
         $this->dubboConnection = $conn;
@@ -98,7 +98,7 @@ class DubboClient implements Async, Heartbeatable
 
         $sockInfo = $this->swooleClient->getsockname();
         $this->serverAddr = ip2long($sockInfo["host"]) . ':' . $sockInfo["port"];
-        $this->codec = $codec ?: new DubboCodec();
+        $this->defaultCodec = new DubboCodec();
     }
 
     public function execute(callable $callback, $task)
@@ -108,28 +108,26 @@ class DubboClient implements Async, Heartbeatable
     }
 
     /**
-     * 泛化调用(不能用于重载方法调用)
+     * 泛化调用, 重载方法必须传递方法签名
      *
      * @param string $method
      * @param array $arguments
+     * @param JavaMethodSignature $signature
      * @param int $timeout
      * @return \Generator
-     * @throws DubboCodecException
-     * @throws InvalidArgumentException
-     * @throws \Throwable
-     *
-     * method         方法名，如：findPerson，如果有重载方法，需带上参数列表，如：findPerson(java.lang.String)
-     * parameterTypes 参数类型
-     * args           参数列表
-     *
-     * Object $invoke(String method, String[] parameterTypes, Object[] args) throws GenericException;
-     *
-     * Ljava/lang/String;[Ljava/lang/String;[Ljava/lang/Object;
      */
-    public function genericCall($method, array $arguments, $timeout = self::DEFAULT_SEND_TIMEOUT)
+    public function genericCall($method, array $arguments, JavaMethodSignature $signature = null, $timeout = self::DEFAULT_SEND_TIMEOUT)
     {
+        $types = [];
+        if ($signature) {
+            $ptypes = $signature->getParameterTypes();
+            foreach ($ptypes as $ptype) {
+                $types[] = $ptype->getRawType()->getName();
+            }
+        }
+
         $method = new JavaValue(JavaType::$T_String, $method);
-        $types = new JavaValue(JavaType::$T_Strings, []);
+        $types = new JavaValue(JavaType::$T_Strings, $types);
         $args = new JavaValue(JavaType::$T_Objects, $arguments);
 
         yield setRpcContext("interface", $this->serviceName);
@@ -137,45 +135,6 @@ class DubboClient implements Async, Heartbeatable
         yield $this->call(self::GENERIC_METHOD, [$method, $types, $args], null, $timeout);
     }
 
-    /**
-     * 泛化调用(需要提供类型信息, 可用于重载方法)
-     *
-     * @param string $method
-     * @param JavaValue[] $arguments
-     * @param int $timeout
-     * @return \Generator
-     * @throws DubboCodecException
-     * @throws InvalidArgumentException
-     * @throws \Throwable
-     *
-     * method         方法名，如：findPerson，如果有重载方法，需带上参数列表，如：findPerson(java.lang.String)
-     * parameterTypes 参数类型
-     * args           参数列表
-     *
-     * Object $invoke(String method, String[] parameterTypes, Object[] args) throws GenericException;
-     *
-     * Ljava/lang/String;[Ljava/lang/String;[Ljava/lang/Object;
-     */
-    public function genericCallEx($method, array $arguments, $timeout = self::DEFAULT_SEND_TIMEOUT)
-    {
-        $types = [];
-        $args = [];
-        foreach ($arguments as $argument) {
-            if (!($argument instanceof JavaValue)) {
-                throw new InvalidArgumentException();
-            }
-            $types[] = $argument->getType()->getName();
-            $args[] = $argument->getValue();
-        }
-
-        $method = new JavaValue(JavaType::$T_String, $method);
-        $types = new JavaValue(JavaType::$T_Strings, $types);
-        $args = new JavaValue(JavaType::$T_Objects, $args);
-
-        yield setRpcContext("interface", $this->serviceName);
-        yield setRpcContext("generic", "true");
-        yield $this->call(self::GENERIC_METHOD, [$method, $types, $args], null, $timeout);
-    }
 
     /**
      * @param string $method
@@ -197,10 +156,13 @@ class DubboClient implements Async, Heartbeatable
             $parameterTypes[] = $argument->getType();
         }
 
+        /** @var Codec $codec */
+        $codec = (yield $this->getCodec()) ?: $this->defaultCodec;
         $seq = nova_get_sequence();
         $attachment = (yield getRpcContext(null, []));
 
         $context = new ClientContext();
+        $context->setCodec($codec);
         $context->setArguments($arguments);
         $context->setReqServiceName($this->serviceName);
         $context->setReqMethodName($method);
@@ -232,10 +194,9 @@ class DubboClient implements Async, Heartbeatable
         $req->setData($invoke);
         $req->setId($seq);
 
-
         $ex = null;
         try {
-            $sendBuffer = $this->codec->encode($req);
+            $sendBuffer = $codec->encode($req);
             $this->dubboConnection->setLastUsedTime();
             $r = $this->swooleClient->send($sendBuffer);
             if (!$r) {
@@ -265,9 +226,16 @@ class DubboClient implements Async, Heartbeatable
             return;
         }
 
+        $codec = $this->defaultCodec;
+        list($isHB, $seqNo) = $codec->decodeReqId($data);
+        if (!$isHB && isset(self::$reqMap[$seqNo])) {
+            $context = self::$reqMap[$seqNo];
+            $codec = $context->getCodec();
+        }
+
         /** @var Codec $codec */
         /** @var Response $resp */
-        $resp = $this->codec->decode($data, function($reqId) {
+        $resp = $codec->decode($data, function($reqId) {
             $context = isset(self::$reqMap[$reqId]) ? self::$reqMap[$reqId] : null;
             return $context ? $context->getReturnType() : null;
         });
@@ -315,6 +283,27 @@ class DubboClient implements Async, Heartbeatable
             $rpcEx = $resp->getException();
             $this->endTransaction($context, null, $rpcEx);
             call_user_func($context->getCb(), null, $rpcEx);
+        }
+    }
+
+    private function getCodec()
+    {
+        static $hessian2Codec;
+        static $jsonCodec;
+
+        $codecName = (yield getContext("dubbo::codec", "hessian2"));
+        if ($codecName === "hessian2") {
+            if ($hessian2Codec === null) {
+                $hessian2Codec = new DubboCodec();
+            }
+            yield $hessian2Codec;
+            return;
+        } else if ($codecName === "json") {
+            if ($jsonCodec === null) {
+                $jsonCodec = new DubboJsonCodec();
+            }
+            yield $jsonCodec;
+            return;
         }
     }
 
@@ -487,7 +476,7 @@ class DubboClient implements Async, Heartbeatable
         $pdu->setId($seq);
 
         try {
-            $sendBuffer = $this->codec->encode($pdu);
+            $sendBuffer = $this->defaultCodec->encode($pdu);
             $this->dubboConnection->setLastUsedTime();
             $this->swooleClient->send($sendBuffer);
             self::$reqMap[$seq] = $context;

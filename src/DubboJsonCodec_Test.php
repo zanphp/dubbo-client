@@ -2,6 +2,35 @@
 
 namespace ZanPHP\Dubbo;
 
+
+function isJSON($string)
+{
+    if (!is_string($string)) {
+        return false;
+    }
+
+    $pcreRegex = '
+  /
+  (?(DEFINE)
+     (?<number>   -? (?= [1-9]|0(?!\d) ) \d+ (\.\d+)? ([eE] [+-]? \d+)? )    
+     (?<boolean>   true | false | null )
+     (?<string>    " ([^"\\\\]* | \\\\ ["\\\\bfnrt\/] | \\\\ u [0-9a-f]{4} )* " )
+     (?<array>     \[  (?:  (?&json)  (?: , (?&json)  )*  )?  \s* \] )
+     (?<pair>      \s* (?&string) \s* : (?&json)  )
+     (?<object>    \{  (?:  (?&pair)  (?: , (?&pair)  )*  )?  \s* \} )
+     (?<json>   \s* (?: (?&number) | (?&boolean) | (?&string) | (?&array) | (?&object) ) \s* )
+  )
+  \A (?&json) \Z
+  /six   
+';
+    return boolval(preg_match($pcreRegex, $string));
+}
+
+assert(isJSON(file_get_contents("http://www.json.org/JSON_checker/test/pass1.json")));
+assert(isJSON(file_get_contents("http://www.json.org/JSON_checker/test/pass2.json")));
+assert(isJSON(file_get_contents("http://www.json.org/JSON_checker/test/pass3.json")));
+
+
 function convertEnum(&$args)
 {
     if (is_array($args) && $args) {

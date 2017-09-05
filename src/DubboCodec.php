@@ -43,6 +43,15 @@ class DubboCodec implements Codec
         }
     }
 
+    public function decodeReqId($bin)
+    {
+        $hdr = unpack('nmagic/Cflag/Cstatus/JreqId/NbodySz', $bin);
+        $flag = $hdr["flag"];
+        $reqId =  $hdr["reqId"];
+        $isHB = ($flag & self::FLAG_EVENT) != 0;
+        return [$isHB, $reqId];
+    }
+
     public function decode($bin, $ctx = null)
     {
         $hdr = unpack('nmagic/Cflag/Cstatus/JreqId/NbodySz', $bin);

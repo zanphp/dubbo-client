@@ -53,6 +53,7 @@ class DubboJsonCodec extends DubboCodec
         if (empty($attach)) {
             $attach = "{}";
         } else {
+
             $attach = Json::encode($attach ?: []);
         }
         return $out->writeString($attach);
@@ -86,7 +87,35 @@ class DubboJsonCodec extends DubboCodec
 
     protected function generalize($value)
     {
+        if (!self::isJSON($value)) {
+            return $value;
+        }
+
+        $value = Json::decode($value);
         // FIXME 根据返回值类型把json还原成对象
         return $value;
+    }
+
+    private static function isJSON($string)
+    {
+        if (!is_string($string)) {
+            return false;
+        }
+
+        $pcreRegex = '
+  /
+  (?(DEFINE)
+     (?<number>   -? (?= [1-9]|0(?!\d) ) \d+ (\.\d+)? ([eE] [+-]? \d+)? )    
+     (?<boolean>   true | false | null )
+     (?<string>    " ([^"\\\\]* | \\\\ ["\\\\bfnrt\/] | \\\\ u [0-9a-f]{4} )* " )
+     (?<array>     \[  (?:  (?&json)  (?: , (?&json)  )*  )?  \s* \] )
+     (?<pair>      \s* (?&string) \s* : (?&json)  )
+     (?<object>    \{  (?:  (?&pair)  (?: , (?&pair)  )*  )?  \s* \} )
+     (?<json>   \s* (?: (?&number) | (?&boolean) | (?&string) | (?&array) | (?&object) ) \s* )
+  )
+  \A (?&json) \Z
+  /six   
+';
+        return boolval(preg_match($pcreRegex, $string));
     }
 }
