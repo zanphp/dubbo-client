@@ -112,6 +112,7 @@ class DubboCodec implements Codec
                     $expect = is_callable($ctx) ? $ctx($id) : null;
                     $data = RpcResult::decode($in, $expect);
                 }
+                $data->setValue($this->generalize($data->getValue()));
                 $res->setResult($data);
                 return $res;
             } catch (\Throwable $e) {
@@ -123,6 +124,33 @@ class DubboCodec implements Codec
         } else {
             $res->setErrorMessage($in->readString());
             return $res;
+        }
+    }
+
+    protected function generalize($value)
+    {
+        if (is_array($value)) {
+            if (isset($value["class"])) {
+                $phpClass = str_replace([".", '$'], ["\\", "__"], $value["class"]);
+                if (class_exists($phpClass)) {
+                    $obj = new $phpClass;
+                    foreach ($value as $k => $v) {
+                        $obj->$k = $this->generalize($v);
+                    }
+                    unset($obj->class);
+                    return $obj;
+                } else {
+                    return $value;
+                }
+            } else {
+                $newValue = [];
+                foreach ($value as $k => $v) {
+                    $newValue[$k] = $this->generalize($v);
+                }
+                return $newValue;
+            }
+        } else {
+            return $value;
         }
     }
 

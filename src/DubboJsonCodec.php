@@ -83,4 +83,10 @@ class DubboJsonCodec extends DubboCodec
             }
         }
     }
+
+    protected function generalize($value)
+    {
+        // FIXME 根据返回值类型把json还原成对象
+        return $value;
+    }
 }

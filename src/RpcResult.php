@@ -73,7 +73,6 @@ class RpcResult implements Result
                 } else {
                     $self->value = $in->read(); // readAll ?
                 }
-                $self->value = self::generalize($self->value);
                 break;
             case DubboCodec::RESPONSE_WITH_EXCEPTION:
                 $ex = $in->readObject();
@@ -86,32 +85,5 @@ class RpcResult implements Result
                 throw new DubboCodecException("Unknown result flag, expect '0' '1' '2', get $flag");
         }
         return $self;
-    }
-
-    private static function generalize($value)
-    {
-        if (is_array($value)) {
-            if (isset($value["class"])) {
-                $phpClass = str_replace([".", '$'], ["\\", "__"], $value["class"]);
-                if (class_exists($phpClass)) {
-                    $obj = new $phpClass;
-                    foreach ($value as $k => $v) {
-                        $obj->$k = self::generalize($v);
-                    }
-                    unset($obj->class);
-                    return $obj;
-                } else {
-                    return $value;
-                }
-            } else {
-                $newValue = [];
-                foreach ($value as $k => $v) {
-                    $newValue[$k] = self::generalize($v);
-                }
-                return $newValue;
-            }
-        } else {
-            return $value;
-        }
     }
 }
