@@ -20,7 +20,7 @@ class Stub
             $codec = new DubboCodec();
         }
 
-        $connection = (yield DubboClientConnectionManager::getInstance()->get("dubbo", "com.youzan.service", static::$__type, $method));
+        $connection = (yield DubboClientConnectionManager::getInstance()->get("dubbo", "com.youzan.service", static::$__service, $method));
         if (!($connection instanceof Connection)) {
             throw new NoFreeConnectionException("get dubbo connection error");
         }
@@ -43,7 +43,7 @@ class Stub
             $args[$i] = new JavaValue($signature[$i], $arg);
         }
 
-        $connection = (yield DubboClientConnectionManager::getInstance()->get("dubbo", "com.youzan.service", static::$__type, $method));
+        $connection = (yield DubboClientConnectionManager::getInstance()->get("dubbo", "com.youzan.service", static::$__service, $method));
         if (!($connection instanceof Connection)) {
             throw new NoFreeConnectionException("get dubbo connection error");
         }
