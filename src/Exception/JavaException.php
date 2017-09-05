@@ -45,6 +45,6 @@ class JavaException extends RpcException
             $i++;
         }
 
-        return "Class: $this->class\nMessage: $this->msg\n$s\n\n" . parent::__toString();
+        return "Class: $this->class\nMessage: $this->msg\n\n" . parent::__toString();
     }
 }

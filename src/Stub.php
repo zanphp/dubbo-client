@@ -13,7 +13,7 @@ class Stub
     protected static $__service = "";
     protected static $__methods = [];
 
-    final public function __genericCall($method, ...$args)
+    final public function __genericCall($method, array $args)
     {
         static $codec;
         if (!$codec) {
@@ -29,7 +29,7 @@ class Stub
         yield $dubboClient->genericCall($method, $args);
     }
 
-    final public function __genericCallEx($method, ...$args)
+    final public function __genericCallEx($method, array $args)
     {
         static $codec;
         if (!$codec) {
