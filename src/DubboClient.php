@@ -24,7 +24,7 @@ use Thrift\Exception\TApplicationException;
 
 class DubboClient implements Async, Heartbeatable
 {
-    const DEFAULT_SEND_TIMEOUT = 3000;
+    const DEFAULT_SEND_TIMEOUT = 5000;
 
     /**
      * Object $invoke(String method, String[] parameterTypes, Object[] args) throws GenericException;
