@@ -21,30 +21,11 @@ class DubboJsonCodec extends DubboCodec
         $buf .= $out->writeString($inv->getServiceName());
         $buf .= $out->writeString($inv->getMethodVersion());
         $buf .= $out->writeString($inv->getMethodName());
-
         $buf .= $out->writeString(JavaType::types2desc($inv->getParameterTypes()));
-        $buf .= $this->encodeArguments($out, $inv);
+        $buf .= $out->writeString($inv->getArguments());
         $buf .= $this->encodeAttachments($out, $inv);
 
         return $buf;
-    }
-
-    private function encodeArguments(Output $out, RpcInvocation $inv)
-    {
-        $args = [];
-        foreach ($inv->getArguments() as $i => $arg) {
-            // jsonString 需要map, 且按照约定 arg0, arg1, ...
-            $args["arg$i"] = $arg->getValue();
-        }
-
-        if (empty($args)) {
-            $args = "{}";
-        } else {
-            $this->convertEnum($args);
-            $args = Json::encode($args);
-        }
-
-        return $out->writeString($args);
     }
 
     private function encodeAttachments(Output $out, RpcInvocation $inv)
@@ -59,16 +40,32 @@ class DubboJsonCodec extends DubboCodec
         return $out->writeString($attach);
     }
 
+    public static function encodeArgs(array $args)
+    {
+        $r = [];
+        foreach (array_values($args) as $i => $arg) {
+            // jsonString 需要map, 且按照约定 arg0, arg1, ...
+            $r["arg$i"] = $arg;
+        }
+
+        if (empty($r)) {
+            return "{}";
+        } else {
+            self::convertEnum($args);
+            return Json::encode($args);
+        }
+    }
+
     // hessian 序列化 java enum 序列化成 对象
     // json 序列化 java enum 序列化成 string
-    private function convertEnum(&$args)
+    private static function convertEnum(&$args)
     {
         if (is_array($args) && $args) {
             if (isset($args["__enum"])) {
                 $args = strval($args["name"]);
             } else {
                 foreach ($args as &$arg) {
-                    $this->convertEnum($arg);
+                    self::convertEnum($arg);
                 }
             }
         } else if (is_object($args)) {
@@ -79,7 +76,7 @@ class DubboJsonCodec extends DubboCodec
                 $args = $prop->getValue($args);
             } else {
                 foreach ($args as $key => &$val) {
-                    $this->convertEnum($val);
+                    self::convertEnum($val);
                 }
             }
         }

@@ -22,15 +22,37 @@ use ZanPHP\Timer\Timer;
 use Thrift\Exception\TApplicationException;
 
 
+/* dubbo 泛化调用
+public interface GenericService {
+    **
+     * 泛化调用
+     *
+     * @param method 方法名，如：findPerson，如果有重载方法，需带上参数列表，如：findPerson(java.lang.String)
+     * @param parameterTypes 参数类型
+     * @param args 参数列表
+     * @return 返回值
+     * @throws Throwable 方法抛出的异常
+     *
+    Object $invoke(String method, String[] parameterTypes, Object[] args) throws GenericException;
+
+    **
+     * 泛化调用，方法参数和返回结果使用json序列化，方法参数的key从arg0开始
+     * @param method
+     * @param parameterTypes
+     * @param jsonArgs
+     * @return
+     * @throws GenericException
+     *
+    String $invokeWithJsonArgs(String method, String[] parameterTypes, String jsonArgs) throws GenericException;
+}
+*/
+
 class DubboClient implements Async, Heartbeatable
 {
     const DEFAULT_SEND_TIMEOUT = 5000;
 
-    /**
-     * Object $invoke(String method, String[] parameterTypes, Object[] args) throws GenericException;
-     * String $invoke(String method, String[] parameterTypes, String jsonString) throws GenericException;
-     */
     const GENERIC_METHOD = '$invoke';
+    const GENERIC_METHOD_JSON = '$invokeWithJsonArgs';
 
     /**
      * @var NovaConnection
@@ -118,21 +140,19 @@ class DubboClient implements Async, Heartbeatable
      */
     public function genericCall($method, array $arguments, JavaMethodSignature $signature = null, $timeout = self::DEFAULT_SEND_TIMEOUT)
     {
-        $types = [];
+        $parameterTypes = [];
         if ($signature) {
             $ptypes = $signature->getParameterTypes();
             foreach ($ptypes as $ptype) {
-                $types[] = $ptype->getRawType()->getName();
+                $parameterTypes[] = $ptype->getRawType()->getName();
             }
         }
 
-        $method = new JavaValue(JavaType::$T_String, $method);
-        $types = new JavaValue(JavaType::$T_Strings, $types);
-        $args = new JavaValue(JavaType::$T_Objects, $arguments);
+        $genericArgs = (yield $this->getGenericArgs($method, $parameterTypes, $arguments, $genericMethodName));
 
         yield setRpcContext("interface", $this->serviceName);
         yield setRpcContext("generic", "true");
-        yield $this->call(self::GENERIC_METHOD, [$method, $types, $args], null, $timeout);
+        yield $this->call($genericMethodName, $genericArgs, null, $timeout);
     }
 
 
@@ -291,19 +311,50 @@ class DubboClient implements Async, Heartbeatable
         static $hessian2Codec;
         static $jsonCodec;
 
+        $codec = null;
         $codecName = (yield getContext("dubbo::codec", "hessian2"));
         if ($codecName === "hessian2") {
             if ($hessian2Codec === null) {
                 $hessian2Codec = new DubboCodec();
             }
-            yield $hessian2Codec;
-            return;
+            $codec = $hessian2Codec;
         } else if ($codecName === "json") {
             if ($jsonCodec === null) {
                 $jsonCodec = new DubboJsonCodec();
             }
-            yield $jsonCodec;
-            return;
+            $codec =  $jsonCodec;
+        }
+        // 清除一次性设置
+        yield setContext("dubbo::codec", null);
+        yield $codec;
+    }
+
+    /**
+     * @param $method
+     * @param $parameterTypes
+     * @param $args
+     * @param string $genericMethodName
+     * @return \Generator|void
+     * @throws DubboCodecException
+     */
+    private function getGenericArgs($method, array $parameterTypes, array $args, &$genericMethodName)
+    {
+        $codecName = (yield getContext("dubbo::codec", "hessian2"));
+
+        if ($codecName === "hessian2") {
+            $method = new JavaValue(JavaType::$T_String, $method);
+            $types = new JavaValue(JavaType::$T_Strings, $parameterTypes);
+            $args = new JavaValue(JavaType::$T_Objects, $args);
+            $genericMethodName = self::GENERIC_METHOD;
+            yield [$method, $types, $args];
+        } else if ($codecName === "json") {
+            $method = new JavaValue(JavaType::$T_String, $method);
+            $types = new JavaValue(JavaType::$T_Strings, $parameterTypes);
+            $args = new JavaValue(JavaType::$T_String, DubboJsonCodec::encodeArgs($args));
+            $genericMethodName = self::GENERIC_METHOD_JSON;
+            yield [$method, $types, $args];
+        } else {
+            throw new DubboCodecException("unsupported dubbo::codec $codecName");
         }
     }
 
