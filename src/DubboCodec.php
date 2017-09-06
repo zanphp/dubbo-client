@@ -216,7 +216,7 @@ class DubboCodec implements Codec
         $buf .= $out->writeString(JavaType::types2desc($inv->getParameterTypes()));
 
         $args = $inv->getArguments();
-        foreach ($args as $i => $arg) {
+        foreach ($args as $arg) {
             $buf .= $out->writeJavaValue($arg);
         }
 
