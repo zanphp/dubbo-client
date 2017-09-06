@@ -58,8 +58,8 @@ class DubboJsonCodec extends DubboCodec
         if (empty($r)) {
             return "{}";
         } else {
-            self::convertEnum($args);
-            return Json::encode($args);
+            self::convertEnum($r);
+            return Json::encode($r);
         }
     }
 
