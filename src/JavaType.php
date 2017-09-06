@@ -515,6 +515,7 @@ class JavaType
     public static $T_Unknown;
 
     public static $T_void;
+    public static $T_Void;
     public static $T_Boolean;
     public static $T_boolean;
     public static $T_Integer;
@@ -559,6 +560,7 @@ JavaType::$T_long = JavaType::createPrimitive('long', JavaType::JVM_LONG);
 JavaType::$T_float = JavaType::createPrimitive('float', JavaType::JVM_FLOAT);
 JavaType::$T_double = JavaType::createPrimitive('double', JavaType::JVM_DOUBLE);
 
+JavaType::$T_Void = JavaType::createClass('java.lang.Void');
 JavaType::$T_Boolean = JavaType::createClass('java.lang.Boolean');
 JavaType::$T_Byte = JavaType::createClass('java.lang.Byte');
 JavaType::$T_Character = JavaType::createClass('java.lang.Character');

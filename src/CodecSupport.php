@@ -39,8 +39,9 @@ class CodecSupport
                 $serialize = function($v) { return Factory::getWriter()->writeValue($v); };
                 break;
 
+            case JavaType::$T_Void:
             case JavaType::$T_void:
-                $serialize = function($v) { return ""; };
+                $serialize = function($v) { return null; };
                 break;
 
             case JavaType::$T_Boolean:
@@ -122,7 +123,8 @@ class CodecSupport
                 break;
 
             case JavaType::$T_void:
-                $unserialize = function($v) { return ""; };
+            case JavaType::$T_Void:
+                $unserialize = function($v) { return null; };
                 break;
 
             case JavaType::$T_Boolean:
