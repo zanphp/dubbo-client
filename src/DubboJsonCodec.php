@@ -23,7 +23,9 @@ class DubboJsonCodec extends DubboCodec
         $buf .= $out->writeString($inv->getMethodName());
         $buf .= $out->writeString(JavaType::types2desc($inv->getParameterTypes()));
         $buf .= $out->writeString($inv->getArguments());
-        $buf .= $this->encodeAttachments($out, $inv);
+        $buf .= $out->writeJavaValue(new JavaValue(JavaType::$T_Map, $inv->getAttachments() ?: []));
+        // 这里attach 暂时使用hessian序列化
+        // $buf .= $this->encodeAttachments($out, $inv);
 
         return $buf;
     }
