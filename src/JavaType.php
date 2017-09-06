@@ -51,6 +51,8 @@ class JavaType
 
     private $isArray = false;
 
+    private $isEnum = false;
+
     /**
      * 数组元素类型
      * @var JavaType
@@ -87,14 +89,19 @@ class JavaType
         return $this->isArray;
     }
 
-    public function getComponentType()
+    public function isEnum()
     {
-        return $this->componentClass;
+        return $this->isEnum;
     }
 
     public function isPrimitive()
     {
         return $this->isPrimitive;
+    }
+
+    public function getComponentType()
+    {
+        return $this->componentClass;
     }
 
     public function getName()
@@ -160,6 +167,10 @@ class JavaType
         static::$NAME_TO_TYPE[$type->getName()] = $type;
     }
 
+    /**
+     * @param $name
+     * @return static|null
+     */
     private static function tryGetTypeByName($name)
     {
         if (!isset(static::$NAME_TO_TYPE[$name])) {
@@ -172,6 +183,7 @@ class JavaType
     {
         $type = self::tryGetTypeByName($name);
         if ($type) {
+            assert($type->isPrimitive());
             return $type;
         }
 
@@ -188,6 +200,7 @@ class JavaType
     {
         $type = self::tryGetTypeByName($class);
         if ($type) {
+            assert(!$type->isPrimitive() && !$type->isArray() && !$type->isEnum());
             return $type;
         }
 
@@ -204,6 +217,7 @@ class JavaType
     {
         $type = self::tryGetTypeByName($componentClass->getName() . "[]");
         if ($type) {
+            assert($type->isArray());
             return $type;
         }
 
@@ -212,6 +226,24 @@ class JavaType
         $self->desc = self::JVM_ARRAY . $componentClass->getDesc();
         $self->isPrimitive = false;
         $self->isArray = true;
+        static::register($self);
+        return $self;
+    }
+
+    public static function createEnum($class)
+    {
+        $type = self::tryGetTypeByName($class);
+        if ($type) {
+            assert($type->isEnum());
+            return $type;
+        }
+
+        $self = new static;
+        $self->name = $class;
+        $self->desc = self::JVM_OBJECT . str_replace('.', '/', $class);
+        $self->isPrimitive = false;
+        $self->isArray = false;
+        $self->isEnum = true;
         static::register($self);
         return $self;
     }
