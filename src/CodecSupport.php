@@ -6,8 +6,9 @@ namespace ZanPHP\Dubbo;
 use ZanPHP\Dubbo\Exception\DubboCodecException;
 use ZanPHP\HessianLite\Factory;
 use ZanPHP\HessianLite\RuleResolver;
+use ZanPHP\Support\Json;
 
-// FIXME dubbo/hessian-lite/src/main/java/com/alibaba/com/caucho/hessian/io/SerializerFactory.java
+
 class CodecSupport
 {
     /**
@@ -26,6 +27,132 @@ class CodecSupport
     public static function registerSerialization(Serialization $serialization)
     {
         self::$ID_SERIALIZATION_MAP[$serialization->getContentTypeId()] = $serialization;
+    }
+
+    public static function generalize($protocol, $value)
+    {
+        if ($protocol === "hessian2") {
+            return self::generalizeHessian2Response($value);
+        } else if ($protocol === "json") {
+            return self::generalizeJsonResponse($value);
+        } else {
+            return $value;
+        }
+    }
+
+    private static function generalizeHessian2Response($value)
+    {
+        if (is_array($value)) {
+            if (isset($value["class"])) {
+                $phpClass = str_replace([".", '$'], ["\\", "__"], $value["class"]);
+                if (class_exists($phpClass)) {
+                    $obj = new $phpClass;
+                    foreach ($value as $k => $v) {
+                        $obj->$k = self::generalizeHessian2Response($v);
+                    }
+                    unset($obj->class);
+                    return $obj;
+                } else {
+                    return $value;
+                }
+            } else {
+                $newValue = [];
+                foreach ($value as $k => $v) {
+                    $newValue[$k] = self::generalizeHessian2Response($v);
+                }
+                return $newValue;
+            }
+        } else {
+            return $value;
+        }
+    }
+
+    private static function generalizeJsonResponse($value)
+    {
+        if (!self::isJSON($value)) {
+            return $value;
+        }
+
+        $value = Json::decode($value);
+        // FIXME 根据返回值类型把json还原成对象
+        return $value;
+    }
+
+    private static function isJSON($string)
+    {
+        if (!is_string($string)) {
+            return false;
+        }
+
+        $pcreRegex = '
+  /
+  (?(DEFINE)
+     (?<number>   -? (?= [1-9]|0(?!\d) ) \d+ (\.\d+)? ([eE] [+-]? \d+)? )    
+     (?<boolean>   true | false | null )
+     (?<string>    " ([^"\\\\]* | \\\\ ["\\\\bfnrt\/] | \\\\ u [0-9a-f]{4} )* " )
+     (?<array>     \[  (?:  (?&json)  (?: , (?&json)  )*  )?  \s* \] )
+     (?<pair>      \s* (?&string) \s* : (?&json)  )
+     (?<object>    \{  (?:  (?&pair)  (?: , (?&pair)  )*  )?  \s* \} )
+     (?<json>   \s* (?: (?&number) | (?&boolean) | (?&string) | (?&array) | (?&object) ) \s* )
+  )
+  \A (?&json) \Z
+  /six   
+';
+        return boolval(preg_match($pcreRegex, $string));
+    }
+
+    public static function encodeJsonGenericArgs(array $args)
+    {
+        $r = [];
+        foreach (array_values($args) as $i => $arg) {
+            // jsonString 需要map, 且按照约定 arg0, arg1, ...
+            $r["arg$i"] = $arg;
+        }
+
+        if (empty($r)) {
+            return "{}";
+        } else {
+            self::convertEnumHelper($r);
+            return Json::encode($r);
+        }
+    }
+
+    // hessian 序列化 java enum 序列化成 对象
+    // json 序列化 java enum 序列化成 string
+    private static function convertEnumHelper(&$args)
+    {
+        if (is_array($args) && $args) {
+            if (isset($args["__enum"])) {
+                $args = strval($args["name"]);
+            } else {
+                foreach ($args as &$arg) {
+                    self::convertEnumHelper($arg);
+                }
+            }
+        } else if (is_object($args)) {
+            $clazz = new \ReflectionClass($args);
+            if ($clazz->hasProperty("__enum")) {
+                $prop = $clazz->getProperty("name");
+                $prop->setAccessible(true);
+                $args = $prop->getValue($args);
+            } else {
+                foreach ($args as $key => &$val) {
+                    self::convertEnumHelper($val);
+                }
+            }
+        }
+    }
+
+    public static function encodeJsonAttachments(Output $out, RpcInvocation $inv)
+    {
+        $attach = $inv->getAttachments();
+        if (empty($attach)) {
+            $attach = "{}";
+        } else {
+
+            $attach = Json::encode($attach ?: []);
+        }
+        return $out->writeString($attach);
     }
 
     // FIXME TEST

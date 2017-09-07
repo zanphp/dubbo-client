@@ -23,6 +23,18 @@ class RpcInvocation implements Invocation
     private $arguments = [];
     private $attachments = [];
 
+    private $isJsonSerialize = false;
+
+    public function isJsonSerialize()
+    {
+        return $this->isJsonSerialize;
+    }
+
+    public function setJsonSerialize($isJsonSerialize)
+    {
+        $this->isJsonSerialize = $isJsonSerialize;
+    }
+
     public function getVersion()
     {
         return $this->version;

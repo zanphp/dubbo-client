@@ -43,13 +43,10 @@ class DubboCodec implements Codec
         }
     }
 
-    public function decodeReqId($bin)
+    public function prepareDecodeRequestId($bin)
     {
         $hdr = unpack('nmagic/Cflag/Cstatus/JreqId/NbodySz', $bin);
-        $flag = $hdr["flag"];
-        $reqId =  $hdr["reqId"];
-        $isHB = ($flag & self::FLAG_EVENT) != 0;
-        return [$isHB, $reqId];
+        return  $hdr["reqId"];
     }
 
     public function decode($bin, $ctx = null)
@@ -118,10 +115,8 @@ class DubboCodec implements Codec
                 if ($res->isHeartbeat() || $res->isEvent()) {
                     $data = $this->decodeEvent($in);
                 } else {
-                    $expect = is_callable($ctx) ? $ctx($id) : null;
-                    $data = RpcResult::decode($in, $expect);
+                    $data = RpcResult::decode($in, $ctx);
                 }
-                $data->setValue($this->generalize($data->getValue()));
                 $res->setResult($data);
                 return $res;
             } catch (\Throwable $e) {
@@ -133,33 +128,6 @@ class DubboCodec implements Codec
         } else {
             $res->setErrorMessage($in->readString());
             return $res;
-        }
-    }
-
-    protected function generalize($value)
-    {
-        if (is_array($value)) {
-            if (isset($value["class"])) {
-                $phpClass = str_replace([".", '$'], ["\\", "__"], $value["class"]);
-                if (class_exists($phpClass)) {
-                    $obj = new $phpClass;
-                    foreach ($value as $k => $v) {
-                        $obj->$k = $this->generalize($v);
-                    }
-                    unset($obj->class);
-                    return $obj;
-                } else {
-                    return $value;
-                }
-            } else {
-                $newValue = [];
-                foreach ($value as $k => $v) {
-                    $newValue[$k] = $this->generalize($v);
-                }
-                return $newValue;
-            }
-        } else {
-            return $value;
         }
     }
 
@@ -209,10 +177,6 @@ class DubboCodec implements Codec
         $buf .= $out->writeString($inv->getServiceName());
         $buf .= $out->writeString($inv->getMethodVersion());
         $buf .= $out->writeString($inv->getMethodName());
-//        FIXME ?!
-//        if (substr(self::DUBBO_VERSION, 0, 3) === "2.8") {
-//            $buf .= $out->write(-1);
-//        }
         $buf .= $out->writeString(JavaType::types2desc($inv->getParameterTypes()));
 
         $args = $inv->getArguments();
@@ -220,7 +184,13 @@ class DubboCodec implements Codec
             $buf .= $out->writeJavaValue($arg);
         }
 
-        $buf .= $out->writeJavaValue(new JavaValue(JavaType::$T_Map, $inv->getAttachments() ?: []));
+        // 这里attach 暂时使用hessian序列化
+        // 如果要在json泛化调用情况下要使用json序列化
+//        if ($inv->isJsonSerialize()) {
+//            $buf .= CodecSupport::encodeJsonAttachments($out, $inv);
+//        } else {
+            $buf .= $out->writeJavaValue(new JavaValue(JavaType::$T_Map, $inv->getAttachments() ?: []));
+//        }
         return $buf;
     }
 

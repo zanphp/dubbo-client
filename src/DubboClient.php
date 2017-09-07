@@ -137,6 +137,7 @@ class DubboClient implements Async, Heartbeatable
      * @param JavaMethodSignature $signature
      * @param int $timeout
      * @return \Generator
+     * @throws DubboCodecException
      */
     public function genericCall($method, array $arguments, JavaMethodSignature $signature = null, $timeout = self::DEFAULT_SEND_TIMEOUT)
     {
@@ -148,7 +149,24 @@ class DubboClient implements Async, Heartbeatable
             }
         }
 
-        $genericArgs = (yield $this->getGenericArgs($method, $parameterTypes, $arguments, $genericMethodName));
+        $genericProtocol = (yield getContext("dubbo::generic", "hessian2"));
+        yield setContext("dubbo::generic", null);
+
+        if ($genericProtocol === "hessian2") {
+            $method = new JavaValue(JavaType::$T_String, $method);
+            $types = new JavaValue(JavaType::$T_Strings, $parameterTypes);
+            $arguments = new JavaValue(JavaType::$T_Objects, $arguments);
+            $genericMethodName = self::GENERIC_METHOD;
+            $genericArgs = [$method, $types, $arguments];
+        } else if ($genericProtocol === "json") {
+            $method = new JavaValue(JavaType::$T_String, $method);
+            $types = new JavaValue(JavaType::$T_Strings, $parameterTypes);
+            $arguments = new JavaValue(JavaType::$T_String, CodecSupport::encodeJsonGenericArgs($arguments));
+            $genericMethodName = self::GENERIC_METHOD_JSON;
+            $genericArgs = [$method, $types, $arguments];
+        } else {
+            throw new DubboCodecException("unsupported dubbo generic protocol: $genericProtocol");
+        }
 
         yield setRpcContext("interface", $this->serviceName);
         yield setRpcContext("generic", "true");
@@ -177,12 +195,10 @@ class DubboClient implements Async, Heartbeatable
         }
 
         /** @var Codec $codec */
-        $codec = (yield $this->getCodec()) ?: $this->defaultCodec;
         $seq = nova_get_sequence();
         $attachment = (yield getRpcContext(null, []));
 
         $context = new ClientContext();
-        $context->setCodec($codec);
         $context->setArguments($arguments);
         $context->setReqServiceName($this->serviceName);
         $context->setReqMethodName($method);
@@ -192,6 +208,11 @@ class DubboClient implements Async, Heartbeatable
         $context->setHawk(make(Hawk::class));
         $context->setTrace((yield getContext('trace')));
         $context->setDebuggerTrace((yield getContext("debugger_trace")));
+        if ($method === self::GENERIC_METHOD) {
+            $context->setGenericInvokeProtocol("hessian2");
+        } else if ($method === self::GENERIC_METHOD_JSON) {
+            $context->setGenericInvokeProtocol("json");
+        }
 
         yield $this->beginTransaction($context, $attachment);
 
@@ -216,7 +237,7 @@ class DubboClient implements Async, Heartbeatable
 
         $ex = null;
         try {
-            $sendBuffer = $codec->encode($req);
+            $sendBuffer = $this->defaultCodec->encode($req);
             $this->dubboConnection->setLastUsedTime();
             $r = $this->swooleClient->send($sendBuffer);
             if (!$r) {
@@ -241,24 +262,25 @@ class DubboClient implements Async, Heartbeatable
 
     public function onReceive($data)
     {
+        /** @var ClientContext $context */
         if ($data === false || $data === "") {
             $this->closeConnection($this->getClientErrorException());
             return;
         }
 
-        $codec = $this->defaultCodec;
-        list($isHB, $seqNo) = $codec->decodeReqId($data);
-        if (!$isHB && isset(self::$reqMap[$seqNo])) {
-            $context = self::$reqMap[$seqNo];
-            $codec = $context->getCodec();
+        $context = null;
+        $seqNo = $this->defaultCodec->prepareDecodeRequestId($data);
+        if (isset(self::$seqTimerId[$seqNo])) {
+            Timer::clearAfterJob(self::$seqTimerId[$seqNo]);
+            unset(self::$seqTimerId[$seqNo]);
         }
+        if (isset(self::$reqMap[$seqNo])) {
+            $context = self::$reqMap[$seqNo];
+        }
+        unset(self::$reqMap[$seqNo]);
 
-        /** @var Codec $codec */
         /** @var Response $resp */
-        $resp = $codec->decode($data, function($reqId) {
-            $context = isset(self::$reqMap[$reqId]) ? self::$reqMap[$reqId] : null;
-            return $context ? $context->getReturnType() : null;
-        });
+        $resp = $this->defaultCodec->decode($data, $context);
 
         // dubbo 是双向心跳
         if ($resp instanceof Request) {
@@ -268,22 +290,9 @@ class DubboClient implements Async, Heartbeatable
             return;
         }
 
-        if (!($resp instanceof Response)) {
+        if (!($resp instanceof Response) || $context === null) {
             return;
         }
-
-        $seqNo = $resp->getId();
-        if (isset(self::$seqTimerId[$seqNo])) {
-            Timer::clearAfterJob(self::$seqTimerId[$seqNo]);
-            unset(self::$seqTimerId[$seqNo]);
-        }
-
-        /** @var ClientContext $context */
-        $context = isset(self::$reqMap[$seqNo]) ? self::$reqMap[$seqNo] : null;
-        if (!$context) {
-            return;
-        }
-        unset(self::$reqMap[$seqNo]);
 
         if ($resp->isHeartbeat()) {
             call_user_func($context->getCb(), true);
@@ -296,65 +305,13 @@ class DubboClient implements Async, Heartbeatable
                 return;
             }
             $bizEx = $rpcResult->getException();
-            $bizRet = $rpcResult->getValue(); // FIXME unpack rpcResult
+            $bizRet = $rpcResult->getValue();
             $this->endTransaction($context, $bizRet, $bizRet);
             call_user_func($context->getCb(), $bizRet, $bizEx);
         } else {
             $rpcEx = $resp->getException();
             $this->endTransaction($context, null, $rpcEx);
             call_user_func($context->getCb(), null, $rpcEx);
-        }
-    }
-
-    private function getCodec()
-    {
-        static $hessian2Codec;
-        static $jsonCodec;
-
-        $codec = null;
-        $codecName = (yield getContext("dubbo::codec", "hessian2"));
-        if ($codecName === "hessian2") {
-            if ($hessian2Codec === null) {
-                $hessian2Codec = new DubboCodec();
-            }
-            $codec = $hessian2Codec;
-        } else if ($codecName === "json") {
-            if ($jsonCodec === null) {
-                $jsonCodec = new DubboJsonCodec();
-            }
-            $codec =  $jsonCodec;
-        }
-        // 清除一次性设置
-        yield setContext("dubbo::codec", null);
-        yield $codec;
-    }
-
-    /**
-     * @param $method
-     * @param $parameterTypes
-     * @param $args
-     * @param string $genericMethodName
-     * @return \Generator|void
-     * @throws DubboCodecException
-     */
-    private function getGenericArgs($method, array $parameterTypes, array $args, &$genericMethodName)
-    {
-        $codecName = (yield getContext("dubbo::codec", "hessian2"));
-
-        if ($codecName === "hessian2") {
-            $method = new JavaValue(JavaType::$T_String, $method);
-            $types = new JavaValue(JavaType::$T_Strings, $parameterTypes);
-            $args = new JavaValue(JavaType::$T_Objects, $args);
-            $genericMethodName = self::GENERIC_METHOD;
-            yield [$method, $types, $args];
-        } else if ($codecName === "json") {
-            $method = new JavaValue(JavaType::$T_String, $method);
-            $types = new JavaValue(JavaType::$T_Strings, $parameterTypes);
-            $args = new JavaValue(JavaType::$T_String, DubboJsonCodec::encodeArgs($args));
-            $genericMethodName = self::GENERIC_METHOD_JSON;
-            yield [$method, $types, $args];
-        } else {
-            throw new DubboCodecException("unsupported dubbo::codec $codecName");
         }
     }
 
@@ -544,7 +501,6 @@ class DubboClient implements Async, Heartbeatable
 
     private function pong(Request $resp)
     {
-        // FIXME codec ...
         static $pong;
         if ($pong === null) {
             $pong = hex2bin("dabb22140000000000000002000000014e");

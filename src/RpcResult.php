@@ -58,8 +58,16 @@ class RpcResult implements Result
         return $this;
     }
 
-    public static function decode(Input $in, $expect)
+    public static function decode(Input $in, $ctx)
     {
+        $expect = null;
+        $genericProtocol = null;
+
+        if ($ctx instanceof ClientContext) {
+            $expect = $ctx->getReturnType();
+            $genericProtocol = $ctx->getGenericInvokeProtocol();
+        }
+
         $self = new static();
         $flag = $in->read(); // readInt
         switch ($flag) {
@@ -73,6 +81,7 @@ class RpcResult implements Result
                 } else {
                     $self->value = $in->read(); // readAll ?
                 }
+                $self->value = CodecSupport::generalize($genericProtocol, $self->value);
                 break;
             case DubboCodec::RESPONSE_WITH_EXCEPTION:
                 $ex = $in->readObject();
@@ -86,4 +95,6 @@ class RpcResult implements Result
         }
         return $self;
     }
+
+
 }

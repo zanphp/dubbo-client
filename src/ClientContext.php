@@ -15,7 +15,7 @@ class ClientContext
     private $startTime;//us
     private $arguments;
     private $returnType;
-    private $codec;
+    private $genericInvokeProtocol;
 
     private $traceHandle;
     private $debuggerTraceTid;
@@ -157,13 +157,13 @@ class ClientContext
         $this->returnType = $returnType;
     }
 
-    public function getCodec()
+    public function getGenericInvokeProtocol()
     {
-        return $this->codec;
+        return $this->genericInvokeProtocol;
     }
 
-    public function setCodec($codec)
+    public function setGenericInvokeProtocol($genericInvokeProtocol)
     {
-        $this->codec = $codec;
+        $this->genericInvokeProtocol = $genericInvokeProtocol;
     }
 }
