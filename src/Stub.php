@@ -28,7 +28,9 @@ class Stub
         /** @var JavaMethodSignature $methodSignature */
         $methodSignature = static::$__methods[$method];
         $method = $methodSignature->getMethodName(); // 方法重载
+
         $timeout = (yield getContext("dubbo::timeout", DubboClient::DEFAULT_SEND_TIMEOUT));
+        yield setContext("dubbo::timeout", null);
 
         $dubboClient = new DubboClient($connection, static::$__service);
         yield $dubboClient->genericCall($method, $args, $methodSignature, $timeout);
